@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mekanism Planner v4</title>
+    <title>Mekanism Planner v5</title>
     <style>
         /* --- デザイン規定 (BPSR EXP Calculator準拠) --- */
         :root {
@@ -101,25 +101,121 @@
         label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.95rem; color: var(--text-color); opacity: 0.9; }
         .en-label { font-weight: normal; font-size: 0.85rem; color: var(--sub-text-color); margin-left: 5px; }
 
-        /* 数値入力 */
+        /* --- 数値入力エリア (移植版) --- */
         .number-control {
-            display: flex; align-items: center; border: 1px solid var(--border-color); border-radius: 8px;
-            background-color: var(--input-bg); overflow: hidden; position: relative;
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--input-bg);
+            overflow: hidden;
+            transition: border-color 0.2s;
+            position: relative; /* アイコン配置用 */
         }
         .number-control:focus-within { border-color: var(--highlight-text); }
-        .number-control.error { border-color: var(--error-color); background-color: rgba(255, 107, 107, 0.1); }
-        
-        input[type="number"] {
-            flex-grow: 1; width: 100%; padding: 12px; border: none; background-color: transparent;
-            color: var(--text-color); font-size: 1.2rem; text-align: center;
+        .number-control.error { 
+            border-color: var(--error-color);
+            background-color: rgba(255, 107, 107, 0.1);
         }
+
+        /* スクロールヒント (SVGアイコン) */
+        .scroll-hint {
+            display: none;
+            position: absolute;
+            right: 40px; 
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            opacity: 0;
+            width: 36px;
+            height: 24px;
+            fill: none;
+            stroke: var(--main-accent);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .scroll-hint .wheel {
+            animation: scrollWheel 1.5s infinite;
+        }
+
+        @keyframes scrollWheel {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(4px); opacity: 0; }
+        }
+
+        /* PCスタイル: ホバー時に表示 */
+        @media (hover: hover) and (pointer: fine) {
+            @keyframes iconFade {
+                0% { opacity: 0; transform: translate(0, -50%); }
+                10% { opacity: 1; transform: translate(-5px, -50%); }
+                80% { opacity: 1; }
+                100% { opacity: 0; }
+            }
+
+            .number-control:hover .scroll-hint {
+                display: block;
+                animation: iconFade 2.0s forwards;
+            }
+        }
+
+        /* スマホ用ボタン */
+        .spin-btn {
+            background-color: transparent;
+            border: none;
+            color: var(--highlight-text);
+            font-size: 1.5rem;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .spin-btn:active { background-color: rgba(128, 128, 128, 0.2); }
+
+        input[type="number"] {
+            flex-grow: 1;
+            width: 100%;
+            padding: 12px 5px;
+            border: none;
+            background-color: transparent;
+            color: var(--text-color);
+            font-size: 1.2rem;
+            text-align: center;
+            box-sizing: border-box;
+            -moz-appearance: textfield;
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"]:focus { outline: none; }
-        @media (min-width: 768px) { input[type="number"] { text-align: left; } }
 
-        /* ボタン類 */
-        .spin-btn { background: transparent; border: none; color: var(--highlight-text); font-size: 1.5rem; width: 50px; cursor: pointer; }
-        @media (min-width: 768px) { .spin-btn { display: none; } }
+        /* PC Layout Overrides */
+        @media (min-width: 768px) {
+            .spin-btn { display: none; }
+            .number-control { border: none; background-color: transparent; display: block; }
+            input[type="number"] {
+                text-align: left;
+                padding: 12px;
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                background-color: var(--input-bg);
+            }
+            input[type="number"]:focus {
+                border-color: var(--highlight-text);
+                background-color: var(--card-bg); 
+            }
+            .number-control.error input {
+                border-color: var(--error-color);
+                background-color: rgba(255, 107, 107, 0.1);
+            }
+        }
 
+        /* トグルボタン */
         button.toggle-btn {
             background-color: var(--dark-accent); border: 1px solid var(--dark-accent); color: #fff;
             padding: 14px 20px; border-radius: 30px; cursor: pointer; font-size: 1rem; font-weight: bold;
@@ -128,7 +224,7 @@
         button.toggle-btn:hover { background-color: var(--hover-color); transform: translateY(-2px); }
         button.toggle-btn.inactive { background-color: transparent; color: var(--text-color); border-color: var(--border-color); }
 
-        /* Canvas & Result */
+        /* 結果表示・Canvas */
         .canvas-container { 
             width: 100%; height: 400px; background-color: rgba(0,0,0,0.05);
             border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); margin-bottom: 24px;
@@ -138,62 +234,78 @@
         @media (prefers-color-scheme: light) { .result-value { color: var(--dark-accent); } }
         .unit { font-size: 1rem; color: var(--sub-text-color); margin-left: 5px; }
 
-        /* List & Footer */
+        /* リスト */
         .action-list { list-style: none; padding: 0; margin: 0; }
         .action-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
-        .file-upload-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
-        .file-upload-row:last-child { border-bottom: none; }
-        input[type="file"] { font-size: 0.85rem; color: var(--sub-text-color); }
         
+        /* フッター */
         .footer-signature { position: fixed; bottom: 10px; right: 15px; font-size: 0.85rem; color: #2A5669; font-weight: bold; opacity: 0.9; pointer-events: none; display: flex; gap: 5px; }
         .discord-icon { width: 16px; height: 16px; fill: currentColor; }
         .error-msg { color: var(--error-color); font-size: 0.9rem; margin-top: 5px; display: none; }
         .has-error .error-msg { display: block; }
-
-        /* ステータスバッジ */
-        .status-badge {
-            font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: var(--border-color); color: var(--sub-text-color);
-        }
-        .status-badge.loaded { background: var(--success-color); color: #fff; }
     </style>
 </head>
 <body>
 
 <div id="app" class="container">
-    <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v4.0</small></h1>
+    <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v5.0</small></h1>
 
     <div class="layout-wrapper">
         <div class="card">
+            
             <div class="input-group">
                 <label>幅 (X) / Width</label>
                 <div class="number-control" :class="{ error: isError }">
                     <button class="spin-btn minus" @click="step('x', -1)">-</button>
-                    <input type="number" v-model.number="dims.x" min="3" max="18">
+                    <input type="number" v-model.number="dims.x" min="3" max="18" @wheel.prevent="handleWheel($event, 'x')">
                     <button class="spin-btn plus" @click="step('x', 1)">+</button>
+                    <svg class="scroll-hint" viewBox="0 0 36 24">
+                        <path d="M8 5 L4 9 M8 5 L12 9 M8 5 L8 19 M8 19 L4 15 M8 19 L12 15" />
+                        <rect x="18" y="4" width="12" height="16" rx="5" />
+                        <line class="wheel" x1="24" y1="8" x2="24" y2="10" />
+                    </svg>
                 </div>
             </div>
+
             <div class="input-group">
                 <label>高さ (Y) / Height</label>
                 <div class="number-control" :class="{ error: isError }">
                     <button class="spin-btn minus" @click="step('y', -1)">-</button>
-                    <input type="number" v-model.number="dims.y" min="3" max="18">
+                    <input type="number" v-model.number="dims.y" min="3" max="18" @wheel.prevent="handleWheel($event, 'y')">
                     <button class="spin-btn plus" @click="step('y', 1)">+</button>
+                    <svg class="scroll-hint" viewBox="0 0 36 24">
+                        <path d="M8 5 L4 9 M8 5 L12 9 M8 5 L8 19 M8 19 L4 15 M8 19 L12 15" />
+                        <rect x="18" y="4" width="12" height="16" rx="5" />
+                        <line class="wheel" x1="24" y1="8" x2="24" y2="10" />
+                    </svg>
                 </div>
             </div>
+
             <div class="input-group">
                 <label>奥行 (Z) / Depth</label>
                 <div class="number-control" :class="{ error: isError }">
                     <button class="spin-btn minus" @click="step('z', -1)">-</button>
-                    <input type="number" v-model.number="dims.z" min="3" max="18">
+                    <input type="number" v-model.number="dims.z" min="3" max="18" @wheel.prevent="handleWheel($event, 'z')">
                     <button class="spin-btn plus" @click="step('z', 1)">+</button>
+                    <svg class="scroll-hint" viewBox="0 0 36 24">
+                        <path d="M8 5 L4 9 M8 5 L12 9 M8 5 L8 19 M8 19 L4 15 M8 19 L12 15" />
+                        <rect x="18" y="4" width="12" height="16" rx="5" />
+                        <line class="wheel" x1="24" y1="8" x2="24" y2="10" />
+                    </svg>
                 </div>
             </div>
+
             <div class="input-group">
                 <label>バルブ数 / Valve Count</label>
                 <div class="number-control">
                     <button class="spin-btn minus" @click="step('valve', -1)">-</button>
-                    <input type="number" v-model.number="valveCount" min="0" max="20">
+                    <input type="number" v-model.number="valveCount" min="0" max="20" @wheel.prevent="handleWheel($event, 'valve')">
                     <button class="spin-btn plus" @click="step('valve', 1)">+</button>
+                    <svg class="scroll-hint" viewBox="0 0 36 24">
+                        <path d="M8 5 L4 9 M8 5 L12 9 M8 5 L8 19 M8 19 L4 15 M8 19 L12 15" />
+                        <rect x="18" y="4" width="12" height="16" rx="5" />
+                        <line class="wheel" x1="24" y1="8" x2="24" y2="10" />
+                    </svg>
                 </div>
             </div>
 
@@ -201,35 +313,6 @@
                 <span>構造用ガラス <span class="en-label">/ Structural Glass</span></span>
                 <span>{{ useGlass ? 'ON' : 'OFF' }}</span>
             </button>
-
-            <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-                <label style="margin-bottom: 15px;">テクスチャ設定 <span class="en-label">/ Textures</span></label>
-                <p style="font-size:0.8rem; color:var(--sub-text-color); margin-bottom:15px;">
-                    ※ <code>assets</code> フォルダ内の画像を自動で読み込みます。
-                </p>
-                
-                <div class="file-upload-row">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span class="action-name" style="font-size:0.8rem">Tank Casing</span>
-                        <span class="status-badge" :class="{ loaded: texStatus.tank }">{{ texStatus.tank ? 'Loaded' : 'Default' }}</span>
-                    </div>
-                    <input type="file" accept="image/png" @change="manualLoad($event, 'tank')">
-                </div>
-                <div class="file-upload-row">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span class="action-name" style="font-size:0.8rem">Structural Glass</span>
-                        <span class="status-badge" :class="{ loaded: texStatus.glass }">{{ texStatus.glass ? 'Loaded' : 'Default' }}</span>
-                    </div>
-                    <input type="file" accept="image/png" @change="manualLoad($event, 'glass')">
-                </div>
-                <div class="file-upload-row">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span class="action-name" style="font-size:0.8rem">Valve</span>
-                        <span class="status-badge" :class="{ loaded: texStatus.valve }">{{ texStatus.valve ? 'Loaded' : 'Default' }}</span>
-                    </div>
-                    <input type="file" accept="image/png" @change="manualLoad($event, 'valve')">
-                </div>
-            </div>
 
             <div class="error-msg" :class="{ 'has-error': errorMsg }">{{ errorMsg }}</div>
         </div>
@@ -280,10 +363,8 @@
             const valveCount = ref(2);
             const errorMsg = ref('');
             
-            // Texture Management
+            // Texture Management (Auto Only)
             const textures = { tank: null, glass: null, valve: null };
-            // UI表示用フラグ
-            const texStatus = ref({ tank: false, glass: false, valve: false });
 
             // Recipes
             const recipes = {
@@ -292,6 +373,7 @@
                 'Structural Glass': { 'Steel Ingot': 1, 'Glass': 0.25 }
             };
 
+            // Helper: Change Value (Click or Wheel)
             const step = (target, val) => {
                 if(target === 'valve') {
                     let v = valveCount.value + val;
@@ -302,6 +384,12 @@
                     if(v < 3) v = 3; if(v > 18) v = 18;
                     dims.value[target] = v;
                 }
+            };
+
+            // Helper: Wheel Handler
+            const handleWheel = (e, target) => {
+                const delta = e.deltaY < 0 ? 1 : -1;
+                step(target, delta);
             };
 
             // Logic
@@ -346,17 +434,16 @@
             let scene, camera, renderer, controls, meshGroup;
             const texLoader = new THREE.TextureLoader();
 
-            // デフォルトテクスチャ読み込み
+            // Auto Load Only
             const loadAutoTextures = () => {
                 const load = (path, key) => {
                     texLoader.load(path, (tex) => {
                         tex.magFilter = THREE.NearestFilter;
                         tex.minFilter = THREE.NearestFilter;
                         textures[key] = tex;
-                        texStatus.value[key] = true; // 読み込み成功フラグ
                         updateMesh();
                     }, undefined, (err) => {
-                        console.log(`Auto-load skipped for ${key}: Not found or CORS block.`);
+                        console.log(`Auto-load skipped for ${key}`);
                     });
                 };
                 load('./assets/dynamic_tank.png', 'tank');
@@ -383,7 +470,6 @@
                 scene.add(dl);
                 scene.add(new THREE.AmbientLight(0x404040));
                 
-                // 自動読み込み開始
                 loadAutoTextures();
                 animate();
             };
@@ -404,9 +490,6 @@
                 if(x < 3 || y < 3 || z < 3) return;
 
                 const frames=[], walls=[], valves=[];
-                const frameMat = new THREE.Matrix4(), wallMat = new THREE.Matrix4();
-
-                // 座標計算
                 for(let i=0; i<x; i++) {
                     for(let j=0; j<y; j++) {
                         for(let k=0; k<z; k++) {
@@ -417,7 +500,6 @@
                         }
                     }
                 }
-                // バルブ抽選
                 const shuffled = [...walls].sort(()=>0.5-Math.random());
                 const vLimit = Math.min(valveCount.value, shuffled.length);
                 for(let i=0; i<vLimit; i++) valves.push(shuffled[i]);
@@ -425,7 +507,6 @@
 
                 const geo = new THREE.BoxGeometry(1,1,1);
                 
-                // Material setup
                 const matTank = new THREE.MeshLambertMaterial({ 
                     color: textures.tank ? 0xffffff : 0x555555, 
                     map: textures.tank 
@@ -462,29 +543,11 @@
             };
 
             const animate = () => { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
-            
-            // 手動ロード
-            const manualLoad = (event, type) => {
-                const file = event.target.files[0];
-                if(!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    new THREE.TextureLoader().load(e.target.result, (tex) => {
-                        tex.magFilter = THREE.NearestFilter;
-                        tex.minFilter = THREE.NearestFilter;
-                        textures[type] = tex;
-                        texStatus.value[type] = true;
-                        updateMesh();
-                    });
-                };
-                reader.readAsDataURL(file);
-            };
-
             const formatNumber = (n) => n.toLocaleString();
             watch([dims.value, useGlass, valveCount], updateMesh);
             onMounted(() => { initThree(); });
 
-            return { dims, useGlass, valveCount, errorMsg, isError, volume, blocks, rawMaterials, formatNumber, manualLoad, step, texStatus };
+            return { dims, useGlass, valveCount, errorMsg, isError, volume, blocks, rawMaterials, formatNumber, step, handleWheel };
         }
     }).mount('#app');
 </script>
