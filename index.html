@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mekanism Planner v4</title>
+    <style>
+        /* --- デザイン規定 (BPSR EXP Calculator準拠) --- */
+        :root {
+            --bg-color: #1a1a1d;
+            --card-bg: #2d2d30;
+            --input-bg: #1a1a1d;
+            --dark-accent: #1C1361;
+            --main-accent: #5d9bc0;
+            --hover-color: #2A5669;
+            --highlight-text: #5d9bc0; 
+            --text-color: #e0e0e0;
+            --sub-text-color: #888;
+            --border-color: #444;
+            --error-color: #ff6b6b;
+            --success-color: #56c596; 
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg-color: #f0f2f5;
+                --card-bg: #ffffff;
+                --input-bg: #f7f9fc;
+                --dark-accent: #1C1361; 
+                --main-accent: #5d9bc0;
+                --hover-color: #2A5669;
+                --highlight-text: #1C1361; 
+                --text-color: #333333;
+                --sub-text-color: #666666;
+                --border-color: #dce0e5;
+                --error-color: #d32f2f;
+                --success-color: #2a8a68; 
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            position: relative;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding-bottom: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: var(--highlight-text);
+            line-height: 1.4;
+            letter-spacing: 0.05em;
+        }
+
+        .layout-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        @media (min-width: 900px) {
+            .layout-wrapper {
+                display: grid;
+                grid-template-columns: 350px 1fr;
+                gap: 24px;
+                align-items: stretch;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.95rem; color: var(--text-color); opacity: 0.9; }
+        .en-label { font-weight: normal; font-size: 0.85rem; color: var(--sub-text-color); margin-left: 5px; }
+
+        /* 数値入力 */
+        .number-control {
+            display: flex; align-items: center; border: 1px solid var(--border-color); border-radius: 8px;
+            background-color: var(--input-bg); overflow: hidden; position: relative;
+        }
+        .number-control:focus-within { border-color: var(--highlight-text); }
+        .number-control.error { border-color: var(--error-color); background-color: rgba(255, 107, 107, 0.1); }
+        
+        input[type="number"] {
+            flex-grow: 1; width: 100%; padding: 12px; border: none; background-color: transparent;
+            color: var(--text-color); font-size: 1.2rem; text-align: center;
+        }
+        input[type="number"]:focus { outline: none; }
+        @media (min-width: 768px) { input[type="number"] { text-align: left; } }
+
+        /* ボタン類 */
+        .spin-btn { background: transparent; border: none; color: var(--highlight-text); font-size: 1.5rem; width: 50px; cursor: pointer; }
+        @media (min-width: 768px) { .spin-btn { display: none; } }
+
+        button.toggle-btn {
+            background-color: var(--dark-accent); border: 1px solid var(--dark-accent); color: #fff;
+            padding: 14px 20px; border-radius: 30px; cursor: pointer; font-size: 1rem; font-weight: bold;
+            transition: all 0.2s; width: 100%; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;
+        }
+        button.toggle-btn:hover { background-color: var(--hover-color); transform: translateY(-2px); }
+        button.toggle-btn.inactive { background-color: transparent; color: var(--text-color); border-color: var(--border-color); }
+
+        /* Canvas & Result */
+        .canvas-container { 
+            width: 100%; height: 400px; background-color: rgba(0,0,0,0.05);
+            border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); margin-bottom: 24px;
+        }
+        .result-section { text-align: center; margin-bottom: 24px; }
+        .result-value { font-size: 2.5rem; font-weight: bold; color: var(--highlight-text); line-height: 1.2; }
+        @media (prefers-color-scheme: light) { .result-value { color: var(--dark-accent); } }
+        .unit { font-size: 1rem; color: var(--sub-text-color); margin-left: 5px; }
+
+        /* List & Footer */
+        .action-list { list-style: none; padding: 0; margin: 0; }
+        .action-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
+        .file-upload-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        .file-upload-row:last-child { border-bottom: none; }
+        input[type="file"] { font-size: 0.85rem; color: var(--sub-text-color); }
+        
+        .footer-signature { position: fixed; bottom: 10px; right: 15px; font-size: 0.85rem; color: #2A5669; font-weight: bold; opacity: 0.9; pointer-events: none; display: flex; gap: 5px; }
+        .discord-icon { width: 16px; height: 16px; fill: currentColor; }
+        .error-msg { color: var(--error-color); font-size: 0.9rem; margin-top: 5px; display: none; }
+        .has-error .error-msg { display: block; }
+
+        /* ステータスバッジ */
+        .status-badge {
+            font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: var(--border-color); color: var(--sub-text-color);
+        }
+        .status-badge.loaded { background: var(--success-color); color: #fff; }
+    </style>
+</head>
+<body>
+
+<div id="app" class="container">
+    <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v4.0</small></h1>
+
+    <div class="layout-wrapper">
+        <div class="card">
+            <div class="input-group">
+                <label>幅 (X) / Width</label>
+                <div class="number-control" :class="{ error: isError }">
+                    <button class="spin-btn minus" @click="step('x', -1)">-</button>
+                    <input type="number" v-model.number="dims.x" min="3" max="18">
+                    <button class="spin-btn plus" @click="step('x', 1)">+</button>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>高さ (Y) / Height</label>
+                <div class="number-control" :class="{ error: isError }">
+                    <button class="spin-btn minus" @click="step('y', -1)">-</button>
+                    <input type="number" v-model.number="dims.y" min="3" max="18">
+                    <button class="spin-btn plus" @click="step('y', 1)">+</button>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>奥行 (Z) / Depth</label>
+                <div class="number-control" :class="{ error: isError }">
+                    <button class="spin-btn minus" @click="step('z', -1)">-</button>
+                    <input type="number" v-model.number="dims.z" min="3" max="18">
+                    <button class="spin-btn plus" @click="step('z', 1)">+</button>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>バルブ数 / Valve Count</label>
+                <div class="number-control">
+                    <button class="spin-btn minus" @click="step('valve', -1)">-</button>
+                    <input type="number" v-model.number="valveCount" min="0" max="20">
+                    <button class="spin-btn plus" @click="step('valve', 1)">+</button>
+                </div>
+            </div>
+
+            <button class="toggle-btn" :class="{ inactive: !useGlass }" @click="useGlass = !useGlass">
+                <span>構造用ガラス <span class="en-label">/ Structural Glass</span></span>
+                <span>{{ useGlass ? 'ON' : 'OFF' }}</span>
+            </button>
+
+            <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <label style="margin-bottom: 15px;">テクスチャ設定 <span class="en-label">/ Textures</span></label>
+                <p style="font-size:0.8rem; color:var(--sub-text-color); margin-bottom:15px;">
+                    ※ <code>assets</code> フォルダ内の画像を自動で読み込みます。
+                </p>
+                
+                <div class="file-upload-row">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="action-name" style="font-size:0.8rem">Tank Casing</span>
+                        <span class="status-badge" :class="{ loaded: texStatus.tank }">{{ texStatus.tank ? 'Loaded' : 'Default' }}</span>
+                    </div>
+                    <input type="file" accept="image/png" @change="manualLoad($event, 'tank')">
+                </div>
+                <div class="file-upload-row">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="action-name" style="font-size:0.8rem">Structural Glass</span>
+                        <span class="status-badge" :class="{ loaded: texStatus.glass }">{{ texStatus.glass ? 'Loaded' : 'Default' }}</span>
+                    </div>
+                    <input type="file" accept="image/png" @change="manualLoad($event, 'glass')">
+                </div>
+                <div class="file-upload-row">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="action-name" style="font-size:0.8rem">Valve</span>
+                        <span class="status-badge" :class="{ loaded: texStatus.valve }">{{ texStatus.valve ? 'Loaded' : 'Default' }}</span>
+                    </div>
+                    <input type="file" accept="image/png" @change="manualLoad($event, 'valve')">
+                </div>
+            </div>
+
+            <div class="error-msg" :class="{ 'has-error': errorMsg }">{{ errorMsg }}</div>
+        </div>
+
+        <div class="card">
+            <div id="three-canvas" class="canvas-container"></div>
+
+            <div class="result-section">
+                <div class="en-label">Fluid Capacity</div>
+                <div class="result-value">{{ formatNumber(volume * 16000) }} <span class="unit">mB</span></div>
+                <div class="en-label" style="margin-top:5px;">(Gas: {{ formatNumber(volume * 160000) }} mB)</div>
+            </div>
+
+            <ul class="action-list">
+                <li v-for="(count, name) in blocks" :key="name" class="action-item">
+                    <div class="action-name">{{ name }}</div>
+                    <div class="action-count">{{ count }} <span style="font-size:0.7em; color:var(--sub-text-color)">blocks</span></div>
+                </li>
+            </ul>
+            <div style="margin-top: 20px; border-top: 1px solid var(--border-color);"></div>
+            <ul class="action-list">
+                <li v-for="(count, name) in rawMaterials" :key="name" class="action-item">
+                    <div class="action-name">{{ name }} <span style="font-size:0.8rem; opacity:0.6;">(Raw)</span></div>
+                    <div class="action-count">{{ count }} <span style="font-size:0.7em; color:var(--sub-text-color)">items</span></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="footer-signature">
+    <svg class="discord-icon" viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+    edamae
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+    const { createApp, ref, computed, watch, onMounted } = Vue;
+
+    createApp({
+        setup() {
+            // Data
+            const dims = ref({ x: 5, y: 5, z: 5 });
+            const useGlass = ref(true);
+            const valveCount = ref(2);
+            const errorMsg = ref('');
+            
+            // Texture Management
+            const textures = { tank: null, glass: null, valve: null };
+            // UI表示用フラグ
+            const texStatus = ref({ tank: false, glass: false, valve: false });
+
+            // Recipes
+            const recipes = {
+                'Dynamic Valve': { 'Dynamic Tank': 2, 'Basic Control Circuit': 0.5 },
+                'Dynamic Tank': { 'Steel Ingot': 1, 'Bucket': 0.25 },
+                'Structural Glass': { 'Steel Ingot': 1, 'Glass': 0.25 }
+            };
+
+            const step = (target, val) => {
+                if(target === 'valve') {
+                    let v = valveCount.value + val;
+                    if(v < 0) v = 0; if(v > 20) v = 20;
+                    valveCount.value = v;
+                } else {
+                    let v = dims.value[target] + val;
+                    if(v < 3) v = 3; if(v > 18) v = 18;
+                    dims.value[target] = v;
+                }
+            };
+
+            // Logic
+            const isError = computed(() => !!errorMsg.value);
+            const volume = computed(() => {
+                const { x, y, z } = dims.value;
+                if(x < 3 || y < 3 || z < 3) return 0;
+                return (x - 2) * (y - 2) * (z - 2);
+            });
+            const blocks = computed(() => {
+                const { x, y, z } = dims.value;
+                if(x < 3 || y < 3 || z < 3) { errorMsg.value = "Min 3x3x3"; return {}; }
+                if(x > 18 || y > 18 || z > 18) { errorMsg.value = "Max 18x18x18"; return {}; }
+                errorMsg.value = "";
+                const frameCount = (4 * x) + (4 * y) + (4 * z) - 16;
+                const totalShell = (x * y * z) - ((x - 2) * (y - 2) * (z - 2));
+                const wallCount = totalShell - frameCount;
+                if (valveCount.value > wallCount) errorMsg.value = `Too many valves`;
+                let result = {};
+                const validValves = Math.min(valveCount.value, wallCount);
+                if (validValves > 0) result['Dynamic Valve'] = validValves;
+                result['Dynamic Tank'] = frameCount;
+                const remainingWall = Math.max(0, wallCount - validValves);
+                if (useGlass.value) result['Structural Glass'] = remainingWall;
+                else result['Dynamic Tank'] += remainingWall;
+                return result;
+            });
+            const rawMaterials = computed(() => {
+                let totals = {};
+                const decompose = (itemName, quantity) => {
+                    const recipe = recipes[itemName];
+                    if (recipe) for (const [subItem, subQty] of Object.entries(recipe)) decompose(subItem, subQty * quantity);
+                    else totals[itemName] = (totals[itemName] || 0) + quantity;
+                };
+                for (const [name, count] of Object.entries(blocks.value)) decompose(name, count);
+                let rounded = {};
+                for (const [k, v] of Object.entries(totals)) rounded[k] = Math.ceil(v);
+                return rounded;
+            });
+
+            // --- Three.js ---
+            let scene, camera, renderer, controls, meshGroup;
+            const texLoader = new THREE.TextureLoader();
+
+            // デフォルトテクスチャ読み込み
+            const loadAutoTextures = () => {
+                const load = (path, key) => {
+                    texLoader.load(path, (tex) => {
+                        tex.magFilter = THREE.NearestFilter;
+                        tex.minFilter = THREE.NearestFilter;
+                        textures[key] = tex;
+                        texStatus.value[key] = true; // 読み込み成功フラグ
+                        updateMesh();
+                    }, undefined, (err) => {
+                        console.log(`Auto-load skipped for ${key}: Not found or CORS block.`);
+                    });
+                };
+                load('./assets/dynamic_tank.png', 'tank');
+                load('./assets/structural_glass.png', 'glass');
+                load('./assets/dynamic_valve.png', 'valve');
+            };
+
+            const initThree = () => {
+                const container = document.getElementById('three-canvas');
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 100);
+                camera.position.set(12, 12, 16);
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(w, h);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                container.appendChild(renderer.domElement);
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.autoRotate = true;
+                controls.enableDamping = true;
+                const dl = new THREE.DirectionalLight(0xffffff, 1.2);
+                dl.position.set(10, 20, 10);
+                scene.add(dl);
+                scene.add(new THREE.AmbientLight(0x404040));
+                
+                // 自動読み込み開始
+                loadAutoTextures();
+                animate();
+            };
+
+            const updateMesh = () => {
+                if(!scene) return;
+                if(meshGroup) {
+                    scene.remove(meshGroup);
+                    meshGroup.children.forEach(c => {
+                        if(c.geometry) c.geometry.dispose();
+                        if(c.material) (Array.isArray(c.material)?c.material:[c.material]).forEach(m=>m.dispose());
+                    });
+                }
+                meshGroup = new THREE.Group();
+                scene.add(meshGroup);
+
+                const { x, y, z } = dims.value;
+                if(x < 3 || y < 3 || z < 3) return;
+
+                const frames=[], walls=[], valves=[];
+                const frameMat = new THREE.Matrix4(), wallMat = new THREE.Matrix4();
+
+                // 座標計算
+                for(let i=0; i<x; i++) {
+                    for(let j=0; j<y; j++) {
+                        for(let k=0; k<z; k++) {
+                            const isEdge = ((i===0||i===x-1)?1:0) + ((j===0||j===y-1)?1:0) + ((k===0||k===z-1)?1:0);
+                            const mat = new THREE.Matrix4().setPosition(i-(x-1)/2, j-(y-1)/2, k-(z-1)/2);
+                            if(isEdge>=2) frames.push(mat);
+                            else if(isEdge===1) walls.push(mat);
+                        }
+                    }
+                }
+                // バルブ抽選
+                const shuffled = [...walls].sort(()=>0.5-Math.random());
+                const vLimit = Math.min(valveCount.value, shuffled.length);
+                for(let i=0; i<vLimit; i++) valves.push(shuffled[i]);
+                const normalWalls = shuffled.slice(vLimit);
+
+                const geo = new THREE.BoxGeometry(1,1,1);
+                
+                // Material setup
+                const matTank = new THREE.MeshLambertMaterial({ 
+                    color: textures.tank ? 0xffffff : 0x555555, 
+                    map: textures.tank 
+                });
+                if(frames.length) {
+                    const m = new THREE.InstancedMesh(geo, matTank, frames.length);
+                    frames.forEach((mt,i)=>m.setMatrixAt(i,mt));
+                    meshGroup.add(m);
+                }
+                if(valves.length) {
+                    const matValve = new THREE.MeshLambertMaterial({ 
+                        color: textures.valve ? 0xffffff : 0xaa8800, 
+                        map: textures.valve 
+                    });
+                    const m = new THREE.InstancedMesh(geo, matValve, valves.length);
+                    valves.forEach((mt,i)=>m.setMatrixAt(i,mt));
+                    meshGroup.add(m);
+                }
+                if(normalWalls.length) {
+                    let matWall;
+                    if(useGlass.value) {
+                        matWall = new THREE.MeshLambertMaterial({
+                            color: textures.glass ? 0xffffff : 0x5d9bc0,
+                            map: textures.glass,
+                            transparent: true,
+                            opacity: textures.glass ? 1.0 : 0.3,
+                            side: THREE.DoubleSide, depthWrite: false
+                        });
+                    } else { matWall = matTank; }
+                    const m = new THREE.InstancedMesh(geo, matWall, normalWalls.length);
+                    normalWalls.forEach((mt,i)=>m.setMatrixAt(i,mt));
+                    meshGroup.add(m);
+                }
+            };
+
+            const animate = () => { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
+            
+            // 手動ロード
+            const manualLoad = (event, type) => {
+                const file = event.target.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    new THREE.TextureLoader().load(e.target.result, (tex) => {
+                        tex.magFilter = THREE.NearestFilter;
+                        tex.minFilter = THREE.NearestFilter;
+                        textures[type] = tex;
+                        texStatus.value[type] = true;
+                        updateMesh();
+                    });
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const formatNumber = (n) => n.toLocaleString();
+            watch([dims.value, useGlass, valveCount], updateMesh);
+            onMounted(() => { initThree(); });
+
+            return { dims, useGlass, valveCount, errorMsg, isError, volume, blocks, rawMaterials, formatNumber, manualLoad, step, texStatus };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
