@@ -159,7 +159,8 @@
             flex: 0 0 350px; position: relative; background-color: rgba(0,0,0,0.05);
             border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);
         }
-        #three-canvas { width: 100%; height: 100%; outline: none; cursor: default; }
+        /* Vue refで参照するためIDは使用しないがCSS用クラスとして維持 */
+        .three-canvas-el { width: 100%; height: 100%; outline: none; cursor: default; }
 
         /* ツールパレット */
         .palette {
@@ -176,22 +177,16 @@
             background: rgba(255,255,255,0.05); color: var(--text-color);
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); overflow: hidden;
         }
-        
-        /* 選択中・ホバー時のスタイル */
         .tool-btn:hover, .tool-btn.active {
             background: var(--active-tool-bg); border-color: var(--active-tool-border);
             padding-right: 12px; justify-content: flex-start;
         }
-        
         .tool-icon-wrap { width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        
-        /* テキストアニメーション: max-widthで制御 */
         .tool-text {
             max-width: 0; opacity: 0; white-space: nowrap; font-weight: bold; font-size: 0.9rem;
             transition: all 0.3s ease; transform: translateX(10px);
         }
-        
-        /* hover または active クラスで展開 */
+        /* activeクラスがついているときだけ展開 */
         .tool-btn:hover .tool-text, .tool-btn.active .tool-text {
             max-width: 150px; opacity: 1; margin-left: 4px; transform: translateX(0);
         }
@@ -200,32 +195,29 @@
         .result-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         
         .capacity-header {
-            flex: 0 0 auto; display: flex; gap: 0; /* Gridで制御するためgap0 */
+            flex: 0 0 auto; display: flex; gap: 0;
             border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 10px;
             width: 100%;
         }
-        
         .cap-grid {
             display: grid; grid-template-columns: 1fr 1fr; width: 100%;
         }
-
         .cap-item { 
             display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; transition: opacity 0.2s; 
             justify-content: center;
         }
         .cap-item:first-child { border-right: 1px solid var(--border-color); }
-        
         .cap-item:hover { opacity: 0.8; }
-        .cap-icon { width: 36px; height: 36px; flex-shrink: 0; }
         
+        .cap-icon { width: 36px; height: 36px; flex-shrink: 0; }
         .cap-val { 
             font-size: 1.8rem; font-weight: bold; line-height: 1; font-feature-settings: "tnum"; 
-            min-width: 120px; /* ガタつき防止 */
+            min-width: 130px; text-align: right;
         }
         .cap-label { font-size: 0.8rem; color: var(--sub-text-color); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
         .val-fluid { color: var(--fluid-color); }
         .val-gas { color: var(--gas-color); }
-        .unit { font-size: 1rem; margin-left: 2px; opacity: 0.8; font-weight: normal; color: var(--text-color); }
+        .unit { font-size: 1rem; margin-left: 4px; opacity: 0.8; font-weight: normal; color: var(--text-color); width: 20px; display: inline-block; text-align: left; }
 
         .result-scroll-area { flex: 1; overflow-y: auto; padding-right: 5px; }
         .result-scroll-area::-webkit-scrollbar { width: 4px; }
@@ -239,15 +231,18 @@
         }
         .item-icon-img { width: 80%; height: 80%; object-fit: contain; filter: drop-shadow(0 0 1px rgba(255,255,255,0.8)); }
         
-        /* 3Dブロックアイコン */
+        /* 3Dブロックアイコン (修正: 左下Front面) */
         .cube-icon { width: 14px; height: 14px; position: relative; transform-style: preserve-3d; transform: rotateX(-30deg) rotateY(45deg); }
         .cube-face {
             position: absolute; width: 14px; height: 14px; background-size: cover; image-rendering: pixelated;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3); filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)); 
-            background-color: #555; /* テクスチャ読み込み失敗時の保険 */
+            background-color: #555;
         }
+        /* Front面 (左下) */
         .cube-face.front { transform: translateZ(7px); filter: brightness(1.1); }
+        /* Top面 (上) */
         .cube-face.top { transform: rotateX(90deg) translateZ(7px); filter: brightness(1.3); }
+        /* Right面 (右下) */
         .cube-face.right { transform: rotateY(90deg) translateZ(7px); filter: brightness(0.8); }
 
         .action-list { list-style: none; padding: 0; margin: 0; }
@@ -335,7 +330,7 @@
 
         <div class="panel-right">
             <div class="view-wrapper">
-                <div id="three-canvas"></div>
+                <div ref="canvasContainer" class="three-canvas-el"></div>
                 
                 <div class="palette">
                     <div v-for="tool in tools" :key="tool.id" 
@@ -435,10 +430,11 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-    const { createApp, ref, computed, watch, onMounted, onBeforeUnmount, reactive, nextTick } = Vue;
+    const { createApp, ref, computed, watch, onMounted, onBeforeUnmount, reactive } = Vue;
 
     createApp({
         setup() {
+            // Mekanism v10 Defaults: Fluid=350B, Gas=16000B
             const fluidPerTank = 350000;
             const gasPerTank = 16000000;
 
@@ -447,12 +443,13 @@
             const valveCoords = ref(new Set()); 
             const toastMessage = ref('');
             let toastTimer = null;
-            const currentTool = ref('valve'); // 起動時ツール(選択状態だがアニメーションは後で)
-            const initialToolId = 'valve';
+            const currentTool = ref('valve'); 
+            const canvasContainer = ref(null); // Ref for canvas container
             
             const lang = ref('jp');
             const toggleLang = () => { lang.value = lang.value === 'jp' ? 'en' : 'jp'; };
 
+            // Layer Logic
             const isLayerMode = ref(false);
             const toggleLayerMode = () => { isLayerMode.value = !isLayerMode.value; updateMesh(); };
             const layerLevel = ref(1); 
@@ -465,7 +462,7 @@
                 layerLevel.value = 1; 
             };
 
-            // 共通ユニット管理 (mB, B, kB)
+            // Unit logic (Common)
             const unitState = ref(0);
             const cycleUnit = () => { unitState.value = (unitState.value + 1) % 3; };
             const getUnit = () => ['mB', 'B', 'kB'][unitState.value];
@@ -489,6 +486,7 @@
                     errAir: 'ここには設置できません (空洞)',
                     confirmReset: '配置されたバルブをすべて削除しますか？',
                     toolValve: 'ダイナミックバルブ',
+                    // Items
                     'Dynamic Tank': 'ダイナミックタンク', 'Structural Glass': '構造用ガラス', 'Dynamic Valve': 'ダイナミックバルブ',
                     'Steel Ingot': '鋼鉄インゴット', 'Bucket': 'バケツ', 'Glass': 'ガラス', 'Basic Control Circuit': '基本制御回路'
                 },
@@ -504,6 +502,7 @@
                     errAir: 'Cannot place here (Air)',
                     confirmReset: 'Delete all valves?',
                     toolValve: 'Dynamic Valve',
+                    // Items
                     'Dynamic Tank': 'Dynamic Tank', 'Structural Glass': 'Structural Glass', 'Dynamic Valve': 'Dynamic Valve',
                     'Steel Ingot': 'Steel Ingot', 'Bucket': 'Bucket', 'Glass': 'Glass', 'Basic Control Circuit': 'Basic Control Circuit'
                 }
@@ -619,12 +618,11 @@
             let highlightMesh = null;
             let mouseDownPos = { x: 0, y: 0 };
             let mouseDownTime = 0;
-            // Highlight caching
-            let lastHoveredMeshId = -1;
-            let lastHoveredInstanceId = -1;
 
             const initThree = () => {
-                const wrapper = document.querySelector('.view-wrapper');
+                const wrapper = canvasContainer.value; // Use Ref
+                if(!wrapper) return;
+
                 scene = new THREE.Scene();
                 camera = new THREE.PerspectiveCamera(50, wrapper.clientWidth / wrapper.clientHeight, 0.1, 100);
                 camera.position.set(6, 6, 8); 
@@ -633,7 +631,7 @@
                 renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
                 renderer.setPixelRatio(window.devicePixelRatio);
                 
-                document.getElementById('three-canvas').appendChild(renderer.domElement);
+                wrapper.appendChild(renderer.domElement);
 
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
@@ -656,7 +654,7 @@
                 window.addEventListener('resize', onResize);
                 const cvs = renderer.domElement;
                 cvs.addEventListener('pointermove', onPointerMove);
-                cvs.addEventListener('pointerleave', () => { highlightMesh.visible = false; lastHoveredInstanceId = -1; });
+                cvs.addEventListener('pointerleave', () => { highlightMesh.visible = false; });
                 cvs.addEventListener('pointerdown', (e) => {
                     mouseDownPos = { x: e.clientX, y: e.clientY };
                     mouseDownTime = performance.now();
@@ -674,7 +672,7 @@
             };
 
             const onResize = () => {
-                const wrapper = document.querySelector('.view-wrapper');
+                const wrapper = canvasContainer.value;
                 if (!wrapper || !camera || !renderer) return;
                 camera.aspect = wrapper.clientWidth / wrapper.clientHeight;
                 camera.updateProjectionMatrix();
@@ -690,7 +688,7 @@
 
                 if (intersects.length > 0) {
                     const hit = intersects[0];
-                    if (hit.object.userData.coords && hit.object.userData.coords[hit.instanceId]) {
+                    if(hit.object.userData.coords && hit.object.userData.coords[hit.instanceId]){
                         const { type } = hit.object.userData.coords[hit.instanceId];
                         const matrix = new THREE.Matrix4();
                         hit.object.getMatrixAt(hit.instanceId, matrix);
@@ -699,15 +697,15 @@
                         const tool = tools.find(t => t.id === currentTool.value);
                         if (tool) {
                             if (tool.allowedOn.includes(type)) {
-                                highlightMesh.material.color.setHex(0x5d9bc0); // Blue (Place)
+                                highlightMesh.material.color.setHex(0x5d9bc0); 
                                 highlightMesh.visible = true;
                                 renderer.domElement.style.cursor = 'pointer';
                             } else if (type === 'valve') {
-                                highlightMesh.material.color.setHex(0xe0ac5d); // Yellow (Delete)
+                                highlightMesh.material.color.setHex(0xe0ac5d); 
                                 highlightMesh.visible = true;
                                 renderer.domElement.style.cursor = 'pointer';
                             } else {
-                                highlightMesh.material.color.setHex(0xff6b6b); // Red (Forbid)
+                                highlightMesh.material.color.setHex(0xff6b6b); 
                                 highlightMesh.visible = true;
                                 renderer.domElement.style.cursor = 'default';
                             }
@@ -779,6 +777,7 @@
                     for(let iy=0; iy<y; iy++) {
                         for(let iz=0; iz<z; iz++) {
                             
+                            // Layer Logic: Single layer active, others ghost
                             let isGhost = false;
                             if (isLayerMode.value) {
                                 const val = (axis==='x'?ix : axis==='y'?iy : iz);
@@ -809,6 +808,7 @@
                                     else { walls.push(mat); wallC.push({ ...coordObj, type: 'wall' }); }
                                 }
                             } else {
+                                // Air: Only if NOT ghost
                                 if (!isGhost && isLayerMode.value) {
                                     airs.push(mat); airC.push({ ...coordObj, type: 'air' });
                                 }
@@ -868,16 +868,16 @@
                 const browserLang = navigator.language || navigator.userLanguage;
                 if (!browserLang.startsWith('ja')) lang.value = 'en';
 
-                // 初期配置: 1,1,0 = 前面・中央・一番下の「壁」
+                // 初期配置: 正しい壁座標 (x=1, y=1, z=0) 
                 valveCoords.value.add("1,1,0");
                 
                 initThree();
                 setTimeout(onResize, 100);
                 
                 // ツール名アニメーション (0.5秒後)
-                currentTool.value = null; // 一旦未選択に見せる
+                currentTool.value = null; 
                 setTimeout(() => {
-                    selectTool('valve');
+                    selectTool('valve', true);
                 }, 500);
             });
             onBeforeUnmount(() => { window.removeEventListener('resize', onResize); });
@@ -890,7 +890,8 @@
                 lang, toggleLang, t, 
                 fluidPerTank, gasPerTank,
                 cycleUnit, getUnit, getFormattedCap,
-                isLayerMode, toggleLayerMode, layerLevel, showGhost, sliceAxis, cycleAxis
+                isLayerMode, toggleLayerMode, layerLevel, showGhost, sliceAxis, cycleAxis,
+                canvasContainer // Ref
             };
         }
     }).mount('#app');
