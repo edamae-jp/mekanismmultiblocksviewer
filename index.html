@@ -3,349 +3,211 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mekanism Planner v5</title>
+    <title>Mekanism Planner v6.2</title>
     <style>
-        /* --- デザイン規定 (BPSR EXP Calculator準拠) --- */
+        /* --- デザイン規定 --- */
         :root {
-            --bg-color: #1a1a1d;
-            --card-bg: #2d2d30;
-            --input-bg: #1a1a1d;
-            --dark-accent: #1C1361;
-            --main-accent: #5d9bc0;
-            --hover-color: #2A5669;
-            --highlight-text: #5d9bc0; 
-            --text-color: #e0e0e0;
-            --sub-text-color: #888;
-            --border-color: #444;
-            --error-color: #ff6b6b;
-            --success-color: #56c596; 
+            --bg-color: #1a1a1d; --card-bg: #2d2d30; --input-bg: #1a1a1d;
+            --dark-accent: #1C1361; --main-accent: #5d9bc0; --hover-color: #2A5669;
+            --highlight-text: #5d9bc0; --text-color: #e0e0e0; --sub-text-color: #888;
+            --border-color: #444; --error-color: #ff6b6b; --success-color: #56c596;
         }
-
         @media (prefers-color-scheme: light) {
             :root {
-                --bg-color: #f0f2f5;
-                --card-bg: #ffffff;
-                --input-bg: #f7f9fc;
-                --dark-accent: #1C1361; 
-                --main-accent: #5d9bc0;
-                --hover-color: #2A5669;
-                --highlight-text: #1C1361; 
-                --text-color: #333333;
-                --sub-text-color: #666666;
-                --border-color: #dce0e5;
-                --error-color: #d32f2f;
-                --success-color: #2a8a68; 
+                --bg-color: #f0f2f5; --card-bg: #ffffff; --input-bg: #f7f9fc;
+                --dark-accent: #1C1361; --main-accent: #5d9bc0; --hover-color: #2A5669;
+                --highlight-text: #1C1361; --text-color: #333333; --sub-text-color: #666666;
+                --border-color: #dce0e5; --error-color: #d32f2f; --success-color: #2a8a68;
             }
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-            position: relative;
-            transition: background-color 0.3s, color 0.3s;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color);
+            margin: 0; padding: 10px; height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
         }
 
-        .container {
-            width: 100%;
-            max-width: 1100px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            padding-bottom: 40px;
+        header { flex: 0 0 auto; text-align: center; margin-bottom: 10px; }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--highlight-text); }
+
+        .main-container {
+            display: flex; flex: 1 1 auto; gap: 15px; overflow: hidden;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; overflow-y: auto; }
+            body { overflow: auto; }
         }
 
-        h1 {
-            text-align: center;
-            font-size: 1.8rem;
-            margin-bottom: 10px;
-            color: var(--highlight-text);
-            line-height: 1.4;
-            letter-spacing: 0.05em;
+        .panel-left {
+            flex: 1 1 300px; min-width: 280px;
+            display: flex; flex-direction: column; gap: 15px;
+            overflow-y: auto; padding-right: 5px;
         }
 
-        .layout-wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        @media (min-width: 900px) {
-            .layout-wrapper {
-                display: grid;
-                grid-template-columns: 350px 1fr;
-                gap: 24px;
-                align-items: stretch;
-            }
+        .panel-right {
+            flex: 2 1 400px; min-width: 0;
+            display: flex; flex-direction: column; position: relative;
         }
 
         .card {
-            background-color: var(--card-bg);
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            display: flex;
-            flex-direction: column;
-            border: 1px solid var(--border-color);
-            transition: background-color 0.3s, border-color 0.3s;
-            box-sizing: border-box;
-            position: relative;
+            background-color: var(--card-bg); padding: 15px; border-radius: 12px;
+            border: 1px solid var(--border-color); box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
-        .input-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.95rem; color: var(--text-color); opacity: 0.9; }
-        .en-label { font-weight: normal; font-size: 0.85rem; color: var(--sub-text-color); margin-left: 5px; }
+        .input-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .input-group { flex: 1; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85rem; color: var(--text-color); }
+        .en-label { font-weight: normal; font-size: 0.75rem; color: var(--sub-text-color); margin-left: 3px; }
 
-        /* --- 数値入力エリア (移植版) --- */
         .number-control {
-            display: flex;
-            align-items: center;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background-color: var(--input-bg);
-            overflow: hidden;
-            transition: border-color 0.2s;
-            position: relative; /* アイコン配置用 */
+            display: flex; align-items: center; border: 1px solid var(--border-color);
+            border-radius: 6px; background-color: var(--input-bg); overflow: hidden; position: relative;
         }
         .number-control:focus-within { border-color: var(--highlight-text); }
-        .number-control.error { 
-            border-color: var(--error-color);
-            background-color: rgba(255, 107, 107, 0.1);
-        }
-
-        /* スクロールヒント (SVGアイコン) */
-        .scroll-hint {
-            display: none;
-            position: absolute;
-            right: 40px; 
-            top: 50%;
-            transform: translateY(-50%);
-            pointer-events: none;
-            opacity: 0;
-            width: 36px;
-            height: 24px;
-            fill: none;
-            stroke: var(--main-accent);
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .scroll-hint .wheel {
-            animation: scrollWheel 1.5s infinite;
-        }
-
-        @keyframes scrollWheel {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(4px); opacity: 0; }
-        }
-
-        /* PCスタイル: ホバー時に表示 */
-        @media (hover: hover) and (pointer: fine) {
-            @keyframes iconFade {
-                0% { opacity: 0; transform: translate(0, -50%); }
-                10% { opacity: 1; transform: translate(-5px, -50%); }
-                80% { opacity: 1; }
-                100% { opacity: 0; }
-            }
-
-            .number-control:hover .scroll-hint {
-                display: block;
-                animation: iconFade 2.0s forwards;
-            }
-        }
-
-        /* スマホ用ボタン */
-        .spin-btn {
-            background-color: transparent;
-            border: none;
-            color: var(--highlight-text);
-            font-size: 1.5rem;
-            width: 50px;
-            height: 50px;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: background-color 0.2s;
-            user-select: none;
-            touch-action: manipulation;
-        }
-        .spin-btn:active { background-color: rgba(128, 128, 128, 0.2); }
-
         input[type="number"] {
-            flex-grow: 1;
-            width: 100%;
-            padding: 12px 5px;
-            border: none;
-            background-color: transparent;
-            color: var(--text-color);
-            font-size: 1.2rem;
-            text-align: center;
-            box-sizing: border-box;
-            -moz-appearance: textfield;
+            flex: 1; width: 100%; padding: 8px; border: none; background: transparent;
+            color: var(--text-color); text-align: center; font-size: 1rem;
         }
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"]:focus { outline: none; }
 
-        /* PC Layout Overrides */
-        @media (min-width: 768px) {
-            .spin-btn { display: none; }
-            .number-control { border: none; background-color: transparent; display: block; }
-            input[type="number"] {
-                text-align: left;
-                padding: 12px;
-                border: 1px solid var(--border-color);
-                border-radius: 8px;
-                background-color: var(--input-bg);
-            }
-            input[type="number"]:focus {
-                border-color: var(--highlight-text);
-                background-color: var(--card-bg); 
-            }
-            .number-control.error input {
-                border-color: var(--error-color);
-                background-color: rgba(255, 107, 107, 0.1);
-            }
-        }
-
-        /* トグルボタン */
         button.toggle-btn {
             background-color: var(--dark-accent); border: 1px solid var(--dark-accent); color: #fff;
-            padding: 14px 20px; border-radius: 30px; cursor: pointer; font-size: 1rem; font-weight: bold;
-            transition: all 0.2s; width: 100%; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: bold;
+            width: 100%; display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.2s;
         }
-        button.toggle-btn:hover { background-color: var(--hover-color); transform: translateY(-2px); }
+        button.toggle-btn:hover { background-color: var(--hover-color); }
         button.toggle-btn.inactive { background-color: transparent; color: var(--text-color); border-color: var(--border-color); }
 
-        /* 結果表示・Canvas */
-        .canvas-container { 
-            width: 100%; height: 400px; background-color: rgba(0,0,0,0.05);
-            border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); margin-bottom: 24px;
-        }
-        .result-section { text-align: center; margin-bottom: 24px; }
-        .result-value { font-size: 2.5rem; font-weight: bold; color: var(--highlight-text); line-height: 1.2; }
-        @media (prefers-color-scheme: light) { .result-value { color: var(--dark-accent); } }
-        .unit { font-size: 1rem; color: var(--sub-text-color); margin-left: 5px; }
-
-        /* リスト */
         .action-list { list-style: none; padding: 0; margin: 0; }
-        .action-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
+        .action-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+        .item-icon { width: 20px; height: 20px; margin-right: 8px; vertical-align: middle; object-fit: contain; }
+        .item-name { display: flex; align-items: center; }
+
+        .canvas-container {
+            flex: 1; width: 100%; min-height: 300px;
+            background-color: rgba(0,0,0,0.05); border-radius: 8px;
+            overflow: hidden; border: 1px solid var(--border-color); position: relative;
+        }
         
-        /* フッター */
-        .footer-signature { position: fixed; bottom: 10px; right: 15px; font-size: 0.85rem; color: #2A5669; font-weight: bold; opacity: 0.9; pointer-events: none; display: flex; gap: 5px; }
-        .discord-icon { width: 16px; height: 16px; fill: currentColor; }
-        .error-msg { color: var(--error-color); font-size: 0.9rem; margin-top: 5px; display: none; }
-        .has-error .error-msg { display: block; }
+        .ui-overlay {
+            position: absolute; top: 10px; left: 10px; right: 10px; pointer-events: none;
+            display: flex; justify-content: space-between; align-items: flex-start;
+        }
+        .mouse-guide {
+            background: rgba(0,0,0,0.6); color: #fff; padding: 5px 10px; border-radius: 4px;
+            font-size: 0.8rem; pointer-events: none; backdrop-filter: blur(2px);
+        }
+        .mouse-guide span { display: block; margin-bottom: 2px; }
+        .mouse-guide kbd { border: 1px solid #aaa; padding: 0 4px; border-radius: 3px; font-family: monospace; }
+
+        .toast-msg {
+            background: rgba(255, 60, 60, 0.9); color: white; padding: 8px 16px; border-radius: 4px;
+            font-weight: bold; font-size: 0.9rem; margin-bottom: 5px;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+            text-align: right;
+        }
+        .toast-msg.show { opacity: 1; }
+        .toast-msg.warning { background: rgba(255, 165, 0, 0.9); color: #fff; }
+
+        .footer-signature { font-size: 0.8rem; color: #2A5669; font-weight: bold; text-align: right; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<div id="app" class="container">
-    <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v5.0</small></h1>
+<div id="app">
+    <header>
+        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v6.2</small></h1>
+    </header>
 
-    <div class="layout-wrapper">
-        <div class="card">
+    <div class="main-container">
+        <div class="panel-left">
+            <div class="card">
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>幅 X</label>
+                        <div class="number-control">
+                            <input type="number" v-model.number="dims.x" min="3" max="18" @wheel.prevent="handleWheel($event, 'x')">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>奥行 Z</label>
+                        <div class="number-control">
+                            <input type="number" v-model.number="dims.z" min="3" max="18" @wheel.prevent="handleWheel($event, 'z')">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>高さ Y</label>
+                        <div class="number-control">
+                            <input type="number" v-model.number="dims.y" min="3" max="18" @wheel.prevent="handleWheel($event, 'y')">
+                        </div>
+                    </div>
+                </div>
+
+                <button class="toggle-btn" :class="{ inactive: !useGlass }" @click="useGlass = !useGlass">
+                    <span>構造用ガラス <span class="en-label">/ Glass</span></span>
+                    <span>{{ useGlass ? 'ON' : 'OFF' }}</span>
+                </button>
+            </div>
+
+            <div class="card">
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <div class="en-label">Fluid Capacity</div>
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--highlight-text);">
+                        {{ formatNumber(volume * 16000) }} <span style="font-size: 1rem; color: var(--sub-text-color);">mB</span>
+                    </div>
+                    <div class="en-label">(Gas: {{ formatNumber(volume * 160000) }} mB)</div>
+                </div>
+
+                <ul class="action-list">
+                    <li v-for="(count, name) in blocks" :key="name" class="action-item">
+                        <div class="item-name">
+                            <img :src="getIconPath(name)" class="item-icon" @error="onImgError">
+                            <div>{{ translate(name) }}</div>
+                        </div>
+                        <div style="font-weight: bold;">{{ count }}</div>
+                    </li>
+                </ul>
+
+                <div style="margin: 15px 0; border-top: 1px solid var(--border-color);"></div>
+
+                <ul class="action-list">
+                    <li v-for="(count, name) in rawMaterials" :key="name" class="action-item">
+                        <div class="item-name">
+                            <img :src="getIconPath(name)" class="item-icon" @error="onImgError">
+                            <div>{{ translate(name) }} <span style="font-size:0.7em; opacity:0.6;">(素材)</span></div>
+                        </div>
+                        <div style="font-weight: bold;">{{ count }}</div>
+                    </li>
+                </ul>
+            </div>
             
-            <div class="input-group">
-                <label>幅 (X) / Width</label>
-                <div class="number-control" :class="{ error: isError }">
-                    <button class="spin-btn minus" @click="step('x', -1)">-</button>
-                    <input type="number" v-model.number="dims.x" min="3" max="18" @wheel.prevent="handleWheel($event, 'x')">
-                    <button class="spin-btn plus" @click="step('x', 1)">+</button>
-                    <svg class="scroll-hint" viewBox="0 0 36 24">
-                        <path d="M8 5 L4 9 M8 5 L12 9 M8 5 L8 19 M8 19 L4 15 M8 19 L12 15" />
-                        <rect x="18" y="4" width="12" height="16" rx="5" />
-                        <line class="wheel" x1="24" y1="8" x2="24" y2="10" />
-                    </svg>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label>高さ (Y) / Height</label>
-                <div class="number-control" :class="{ error: isError }">
-                    <button class="spin-btn minus" @click="step('y', -1)">-</button>
-                    <input type="number" v-model.number="dims.y" min="3" max="18" @wheel.prevent="handleWheel($event, 'y')">
-                    <button class="spin-btn plus" @click="step('y', 1)">+</button>
-                    <svg class="scroll-hint" viewBox="0 0 36 24">
-                        <path d="M8 5 L4 9 M8 5 L12 9 M8 5 L8 19 M8 19 L4 15 M8 19 L12 15" />
-                        <rect x="18" y="4" width="12" height="16" rx="5" />
-                        <line class="wheel" x1="24" y1="8" x2="24" y2="10" />
-                    </svg>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label>奥行 (Z) / Depth</label>
-                <div class="number-control" :class="{ error: isError }">
-                    <button class="spin-btn minus" @click="step('z', -1)">-</button>
-                    <input type="number" v-model.number="dims.z" min="3" max="18" @wheel.prevent="handleWheel($event, 'z')">
-                    <button class="spin-btn plus" @click="step('z', 1)">+</button>
-                    <svg class="scroll-hint" viewBox="0 0 36 24">
-                        <path d="M8 5 L4 9 M8 5 L12 9 M8 5 L8 19 M8 19 L4 15 M8 19 L12 15" />
-                        <rect x="18" y="4" width="12" height="16" rx="5" />
-                        <line class="wheel" x1="24" y1="8" x2="24" y2="10" />
-                    </svg>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label>バルブ数 / Valve Count</label>
-                <div class="number-control">
-                    <button class="spin-btn minus" @click="step('valve', -1)">-</button>
-                    <input type="number" v-model.number="valveCount" min="0" max="20" @wheel.prevent="handleWheel($event, 'valve')">
-                    <button class="spin-btn plus" @click="step('valve', 1)">+</button>
-                    <svg class="scroll-hint" viewBox="0 0 36 24">
-                        <path d="M8 5 L4 9 M8 5 L12 9 M8 5 L8 19 M8 19 L4 15 M8 19 L12 15" />
-                        <rect x="18" y="4" width="12" height="16" rx="5" />
-                        <line class="wheel" x1="24" y1="8" x2="24" y2="10" />
-                    </svg>
-                </div>
-            </div>
-
-            <button class="toggle-btn" :class="{ inactive: !useGlass }" @click="useGlass = !useGlass">
-                <span>構造用ガラス <span class="en-label">/ Structural Glass</span></span>
-                <span>{{ useGlass ? 'ON' : 'OFF' }}</span>
-            </button>
-
-            <div class="error-msg" :class="{ 'has-error': errorMsg }">{{ errorMsg }}</div>
+            <div class="footer-signature">edamae</div>
         </div>
 
-        <div class="card">
-            <div id="three-canvas" class="canvas-container"></div>
-
-            <div class="result-section">
-                <div class="en-label">Fluid Capacity</div>
-                <div class="result-value">{{ formatNumber(volume * 16000) }} <span class="unit">mB</span></div>
-                <div class="en-label" style="margin-top:5px;">(Gas: {{ formatNumber(volume * 160000) }} mB)</div>
+        <div class="panel-right">
+            <div id="three-canvas" class="canvas-container">
+                <div class="ui-overlay">
+                    <div class="mouse-guide">
+                        <span><kbd>Click</kbd> 設置 (Place Valve)</span>
+                        <span><kbd>R-Click</kbd> 削除 (Remove)</span>
+                        <span><kbd>Drag</kbd> 回転 (Rotate)</span>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                        <div class="toast-msg" :class="{ show: toastMessage }">
+                            {{ toastMessage }}
+                        </div>
+                        <div class="toast-msg warning" :class="{ show: persistentError }" style="pointer-events: auto;">
+                            ⚠ {{ persistentError }}
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <ul class="action-list">
-                <li v-for="(count, name) in blocks" :key="name" class="action-item">
-                    <div class="action-name">{{ name }}</div>
-                    <div class="action-count">{{ count }} <span style="font-size:0.7em; color:var(--sub-text-color)">blocks</span></div>
-                </li>
-            </ul>
-            <div style="margin-top: 20px; border-top: 1px solid var(--border-color);"></div>
-            <ul class="action-list">
-                <li v-for="(count, name) in rawMaterials" :key="name" class="action-item">
-                    <div class="action-name">{{ name }} <span style="font-size:0.8rem; opacity:0.6;">(Raw)</span></div>
-                    <div class="action-count">{{ count }} <span style="font-size:0.7em; color:var(--sub-text-color)">items</span></div>
-                </li>
-            </ul>
         </div>
     </div>
-</div>
-
-<div class="footer-signature">
-    <svg class="discord-icon" viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
-    edamae
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.js"></script>
@@ -353,70 +215,105 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-    const { createApp, ref, computed, watch, onMounted } = Vue;
+    const { createApp, ref, computed, watch, onMounted, onBeforeUnmount } = Vue;
 
     createApp({
         setup() {
-            // Data
-            const dims = ref({ x: 5, y: 5, z: 5 });
+            // --- State ---
+            // デフォルトサイズ変更: 幅3, 高さ5, 奥行3
+            const dims = ref({ x: 3, y: 5, z: 3 });
             const useGlass = ref(true);
-            const valveCount = ref(2);
-            const errorMsg = ref('');
-            
-            // Texture Management (Auto Only)
-            const textures = { tank: null, glass: null, valve: null };
+            const valveCoords = ref(new Set()); 
+            const toastMessage = ref('');
+            let toastTimer = null;
 
-            // Recipes
+            // --- Data Definitions ---
+            const translations = {
+                'Dynamic Tank': 'ダイナミックタンク',
+                'Structural Glass': '構造用ガラス',
+                'Dynamic Valve': 'ダイナミックバルブ',
+                'Steel Ingot': '鋼鉄インゴット',
+                'Bucket': 'バケツ',
+                'Glass': 'ガラス',
+                'Basic Control Circuit': '基本制御回路'
+            };
+            
+            const iconMap = {
+                'Dynamic Tank': './assets/dynamic_tank.png',
+                'Structural Glass': './assets/structural_glass.png',
+                'Dynamic Valve': './assets/dynamic_valve.png',
+                'Steel Ingot': './assets/ingot_steel.png',
+                'Bucket': './assets/bucket.png',
+                'Glass': './assets/glass.png',
+                'Basic Control Circuit': './assets/basic_control_circuit.png'
+            };
+
             const recipes = {
                 'Dynamic Valve': { 'Dynamic Tank': 2, 'Basic Control Circuit': 0.5 },
                 'Dynamic Tank': { 'Steel Ingot': 1, 'Bucket': 0.25 },
                 'Structural Glass': { 'Steel Ingot': 1, 'Glass': 0.25 }
             };
+            
+            const textures = { tank: null, glass: null, valve: null };
 
-            // Helper: Change Value (Click or Wheel)
-            const step = (target, val) => {
-                if(target === 'valve') {
-                    let v = valveCount.value + val;
-                    if(v < 0) v = 0; if(v > 20) v = 20;
-                    valveCount.value = v;
-                } else {
-                    let v = dims.value[target] + val;
-                    if(v < 3) v = 3; if(v > 18) v = 18;
-                    dims.value[target] = v;
-                }
+            // --- Helpers ---
+            const translate = (key) => translations[key] || key;
+            const getIconPath = (key) => iconMap[key] || '';
+            const onImgError = (e) => { e.target.style.display = 'none'; };
+            const formatNumber = (n) => n.toLocaleString();
+
+            const showToast = (msg) => {
+                toastMessage.value = msg;
+                if(toastTimer) clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => { toastMessage.value = ''; }, 2000);
             };
 
-            // Helper: Wheel Handler
             const handleWheel = (e, target) => {
                 const delta = e.deltaY < 0 ? 1 : -1;
-                step(target, delta);
+                let v = dims.value[target] + delta;
+                if(v < 3) v = 3; if(v > 18) v = 18;
+                dims.value[target] = v;
             };
 
-            // Logic
-            const isError = computed(() => !!errorMsg.value);
+            // --- Logic ---
             const volume = computed(() => {
                 const { x, y, z } = dims.value;
                 if(x < 3 || y < 3 || z < 3) return 0;
                 return (x - 2) * (y - 2) * (z - 2);
             });
+
+            const persistentError = computed(() => {
+                if(valveCoords.value.size === 0) return "バルブが設置されていません (No Valves)";
+                return "";
+            });
+
             const blocks = computed(() => {
                 const { x, y, z } = dims.value;
-                if(x < 3 || y < 3 || z < 3) { errorMsg.value = "Min 3x3x3"; return {}; }
-                if(x > 18 || y > 18 || z > 18) { errorMsg.value = "Max 18x18x18"; return {}; }
-                errorMsg.value = "";
                 const frameCount = (4 * x) + (4 * y) + (4 * z) - 16;
                 const totalShell = (x * y * z) - ((x - 2) * (y - 2) * (z - 2));
-                const wallCount = totalShell - frameCount;
-                if (valveCount.value > wallCount) errorMsg.value = `Too many valves`;
+                const totalWall = totalShell - frameCount;
+
+                let validValveCount = 0;
+                valveCoords.value.forEach(coord => {
+                    const [vx, vy, vz] = coord.split(',').map(Number);
+                    if (vx >= -(x-1)/2 && vx <= (x-1)/2 &&
+                        vy >= -(y-1)/2 && vy <= (y-1)/2 &&
+                        vz >= -(z-1)/2 && vz <= (z-1)/2) {
+                        validValveCount++;
+                    }
+                });
+
                 let result = {};
-                const validValves = Math.min(valveCount.value, wallCount);
-                if (validValves > 0) result['Dynamic Valve'] = validValves;
+                if (validValveCount > 0) result['Dynamic Valve'] = validValveCount;
                 result['Dynamic Tank'] = frameCount;
-                const remainingWall = Math.max(0, wallCount - validValves);
+
+                const remainingWall = Math.max(0, totalWall - validValveCount);
                 if (useGlass.value) result['Structural Glass'] = remainingWall;
                 else result['Dynamic Tank'] += remainingWall;
+
                 return result;
             });
+
             const rawMaterials = computed(() => {
                 let totals = {};
                 const decompose = (itemName, quantity) => {
@@ -432,46 +329,91 @@
 
             // --- Three.js ---
             let scene, camera, renderer, controls, meshGroup;
-            const texLoader = new THREE.TextureLoader();
-
-            // Auto Load Only
-            const loadAutoTextures = () => {
-                const load = (path, key) => {
-                    texLoader.load(path, (tex) => {
-                        tex.magFilter = THREE.NearestFilter;
-                        tex.minFilter = THREE.NearestFilter;
-                        textures[key] = tex;
-                        updateMesh();
-                    }, undefined, (err) => {
-                        console.log(`Auto-load skipped for ${key}`);
-                    });
-                };
-                load('./assets/dynamic_tank.png', 'tank');
-                load('./assets/structural_glass.png', 'glass');
-                load('./assets/dynamic_valve.png', 'valve');
-            };
+            let raycaster, mouse;
+            let interactiveMeshes = [];
 
             const initThree = () => {
                 const container = document.getElementById('three-canvas');
-                const w = container.clientWidth;
-                const h = container.clientHeight;
+                
                 scene = new THREE.Scene();
-                camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 100);
-                camera.position.set(12, 12, 16);
+                
+                camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
+                camera.position.set(10, 8, 12); // 初期カメラ位置も少し近づける
+
                 renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-                renderer.setSize(w, h);
+                renderer.setSize(container.clientWidth, container.clientHeight);
                 renderer.setPixelRatio(window.devicePixelRatio);
                 container.appendChild(renderer.domElement);
+
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.autoRotate = true;
                 controls.enableDamping = true;
+                
                 const dl = new THREE.DirectionalLight(0xffffff, 1.2);
                 dl.position.set(10, 20, 10);
                 scene.add(dl);
                 scene.add(new THREE.AmbientLight(0x404040));
-                
-                loadAutoTextures();
+
+                raycaster = new THREE.Raycaster();
+                mouse = new THREE.Vector2();
+
+                window.addEventListener('resize', onResize);
+                renderer.domElement.addEventListener('pointerdown', onPointerDown);
+
+                const tl = new THREE.TextureLoader();
+                const loadTex = (p, k) => tl.load(p, t => { t.magFilter = THREE.NearestFilter; textures[k] = t; updateMesh(); });
+                loadTex('./assets/dynamic_tank.png', 'tank');
+                loadTex('./assets/structural_glass.png', 'glass');
+                loadTex('./assets/dynamic_valve.png', 'valve');
+
+                updateMesh();
                 animate();
+            };
+
+            const onResize = () => {
+                const container = document.getElementById('three-canvas');
+                if (!container || !camera || !renderer) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            };
+
+            const onPointerDown = (event) => {
+                if (event.button !== 0 && event.button !== 2) return; 
+
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(interactiveMeshes);
+
+                if (intersects.length > 0) {
+                    const hit = intersects[0];
+                    const instanceId = hit.instanceId;
+                    const mesh = hit.object;
+
+                    if (mesh.userData && mesh.userData.coords && mesh.userData.coords[instanceId]) {
+                        const { x, y, z, type } = mesh.userData.coords[instanceId];
+                        const coordKey = `${x},${y},${z}`;
+
+                        if (type === 'frame') {
+                            showToast("そこには設置できません (Frame)");
+                            return;
+                        }
+
+                        if (event.button === 0) {
+                            if (type !== 'valve') {
+                                valveCoords.value.add(coordKey);
+                                updateMesh();
+                            }
+                        } else if (event.button === 2) { 
+                            if (type === 'valve') {
+                                valveCoords.value.delete(coordKey);
+                                updateMesh();
+                            }
+                        }
+                    }
+                }
             };
 
             const updateMesh = () => {
@@ -485,69 +427,109 @@
                 }
                 meshGroup = new THREE.Group();
                 scene.add(meshGroup);
+                interactiveMeshes = [];
 
                 const { x, y, z } = dims.value;
                 if(x < 3 || y < 3 || z < 3) return;
 
-                const frames=[], walls=[], valves=[];
+                const frames = [], walls = [], valves = [];
+                const frameCoords = [], wallCoords = [], valveCoordsArr = [];
+
                 for(let i=0; i<x; i++) {
                     for(let j=0; j<y; j++) {
                         for(let k=0; k<z; k++) {
+                            const posX = i - (x-1)/2;
+                            const posY = j - (y-1)/2;
+                            const posZ = k - (z-1)/2;
+
                             const isEdge = ((i===0||i===x-1)?1:0) + ((j===0||j===y-1)?1:0) + ((k===0||k===z-1)?1:0);
-                            const mat = new THREE.Matrix4().setPosition(i-(x-1)/2, j-(y-1)/2, k-(z-1)/2);
-                            if(isEdge>=2) frames.push(mat);
-                            else if(isEdge===1) walls.push(mat);
+                            const mat = new THREE.Matrix4().setPosition(posX, posY, posZ);
+                            const coordObj = { x: posX, y: posY, z: posZ };
+                            const coordKey = `${posX},${posY},${posZ}`;
+
+                            if (isEdge >= 2) {
+                                frames.push(mat);
+                                frameCoords.push({ ...coordObj, type: 'frame' });
+                            } else if (isEdge === 1) {
+                                if (valveCoords.value.has(coordKey)) {
+                                    valves.push(mat);
+                                    valveCoordsArr.push({ ...coordObj, type: 'valve' });
+                                } else {
+                                    walls.push(mat);
+                                    wallCoords.push({ ...coordObj, type: 'wall' });
+                                }
+                            }
                         }
                     }
                 }
-                const shuffled = [...walls].sort(()=>0.5-Math.random());
-                const vLimit = Math.min(valveCount.value, shuffled.length);
-                for(let i=0; i<vLimit; i++) valves.push(shuffled[i]);
-                const normalWalls = shuffled.slice(vLimit);
 
                 const geo = new THREE.BoxGeometry(1,1,1);
                 
-                const matTank = new THREE.MeshLambertMaterial({ 
-                    color: textures.tank ? 0xffffff : 0x555555, 
-                    map: textures.tank 
-                });
                 if(frames.length) {
-                    const m = new THREE.InstancedMesh(geo, matTank, frames.length);
-                    frames.forEach((mt,i)=>m.setMatrixAt(i,mt));
-                    meshGroup.add(m);
+                    const mat = new THREE.MeshLambertMaterial({ color: textures.tank ? 0xffffff : 0x555555, map: textures.tank });
+                    const mesh = new THREE.InstancedMesh(geo, mat, frames.length);
+                    frames.forEach((m,i) => mesh.setMatrixAt(i,m));
+                    mesh.userData.coords = frameCoords;
+                    meshGroup.add(mesh);
+                    interactiveMeshes.push(mesh);
                 }
+
                 if(valves.length) {
-                    const matValve = new THREE.MeshLambertMaterial({ 
-                        color: textures.valve ? 0xffffff : 0xaa8800, 
-                        map: textures.valve 
-                    });
-                    const m = new THREE.InstancedMesh(geo, matValve, valves.length);
-                    valves.forEach((mt,i)=>m.setMatrixAt(i,mt));
-                    meshGroup.add(m);
+                    const mat = new THREE.MeshLambertMaterial({ color: textures.valve ? 0xffffff : 0xaa8800, map: textures.valve });
+                    const mesh = new THREE.InstancedMesh(geo, mat, valves.length);
+                    valves.forEach((m,i) => mesh.setMatrixAt(i,m));
+                    mesh.userData.coords = valveCoordsArr;
+                    meshGroup.add(mesh);
+                    interactiveMeshes.push(mesh);
                 }
-                if(normalWalls.length) {
-                    let matWall;
+
+                if(walls.length) {
+                    let mat;
                     if(useGlass.value) {
-                        matWall = new THREE.MeshLambertMaterial({
+                        mat = new THREE.MeshLambertMaterial({
                             color: textures.glass ? 0xffffff : 0x5d9bc0,
                             map: textures.glass,
-                            transparent: true,
-                            opacity: textures.glass ? 1.0 : 0.3,
+                            transparent: true, opacity: textures.glass ? 1.0 : 0.3,
                             side: THREE.DoubleSide, depthWrite: false
                         });
-                    } else { matWall = matTank; }
-                    const m = new THREE.InstancedMesh(geo, matWall, normalWalls.length);
-                    normalWalls.forEach((mt,i)=>m.setMatrixAt(i,mt));
-                    meshGroup.add(m);
+                    } else {
+                        mat = new THREE.MeshLambertMaterial({ color: textures.tank ? 0xffffff : 0x555555, map: textures.tank });
+                    }
+                    const mesh = new THREE.InstancedMesh(geo, mat, walls.length);
+                    walls.forEach((m,i) => mesh.setMatrixAt(i,m));
+                    mesh.userData.coords = wallCoords;
+                    meshGroup.add(mesh);
+                    interactiveMeshes.push(mesh);
                 }
             };
 
-            const animate = () => { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
-            const formatNumber = (n) => n.toLocaleString();
-            watch([dims.value, useGlass, valveCount], updateMesh);
-            onMounted(() => { initThree(); });
+            const animate = () => {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            };
 
-            return { dims, useGlass, valveCount, errorMsg, isError, volume, blocks, rawMaterials, formatNumber, step, handleWheel };
+            watch([dims.value, useGlass], () => {
+                updateMesh();
+            }, { deep: true });
+
+            onMounted(() => {
+                // 初期バルブ位置を3x5x3に合わせて調整 (中央高さ)
+                valveCoords.value.add("0,0,1");
+                valveCoords.value.add("0,0,-1");
+                initThree();
+                setTimeout(onResize, 100);
+            });
+
+            onBeforeUnmount(() => {
+                window.removeEventListener('resize', onResize);
+            });
+
+            return {
+                dims, useGlass, volume, blocks, rawMaterials,
+                formatNumber, translate, getIconPath, onImgError,
+                handleWheel, toastMessage, persistentError
+            };
         }
     }).mount('#app');
 </script>
