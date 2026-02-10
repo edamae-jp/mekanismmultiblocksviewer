@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mekanism Planner v14.0</title>
+    <title>Mekanism Planner v15.0</title>
     <style>
         /* --- デザイン変数 --- */
         :root {
@@ -123,13 +123,12 @@
         button.toggle-btn:hover { background-color: var(--hover-color); transform: translateY(-1px); }
         button.toggle-btn.inactive { background-color: transparent; color: var(--text-color); border-color: var(--border-color); }
 
-        /* レイヤー制御エリア (左パネル内) */
+        /* レイヤー制御エリア */
         .layer-control-panel {
             margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);
             display: flex; flex-direction: column; gap: 10px;
         }
-        .layer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        .layer-row { display: flex; align-items: center; gap: 10px; }
+        .layer-row { display: flex; align-items: center; gap: 10px; min-height: 30px; }
         
         .mini-btn {
             background: transparent; border: 1px solid var(--border-color); color: var(--text-color);
@@ -142,7 +141,7 @@
         .layer-slider { flex: 1; accent-color: var(--main-accent); cursor: pointer; height: 20px; }
 
         /* スイッチトグル */
-        .switch-wrap { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .switch-wrap { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
         .switch-body {
             width: 40px; height: 22px; background: #444; border-radius: 11px; position: relative; transition: background 0.3s;
         }
@@ -169,6 +168,7 @@
             border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 6px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3); align-items: flex-end;
         }
+        
         .tool-btn {
             height: 40px; min-width: 40px; padding: 0;
             border: 2px solid transparent; border-radius: 6px; cursor: pointer; 
@@ -245,7 +245,7 @@
 
 <div id="app" style="height: 100%; display: flex; flex-direction: column;">
     <header>
-        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v14.0</small></h1>
+        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v15.0</small></h1>
         
         <div class="lang-switch" :data-lang="lang" @click="toggleLang">
             <div class="lang-bg"></div>
@@ -410,7 +410,7 @@
 
     createApp({
         setup() {
-            // Mekanism v10: Fluid=350B(350,000mB), Gas=16,000B(16,000,000mB)
+            // Fluid: 350B, Gas: 16000B
             const fluidPerTank = 350000;
             const gasPerTank = 16000000;
 
@@ -427,14 +427,14 @@
             // Layer Logic
             const isLayerMode = ref(false);
             const toggleLayerMode = () => { isLayerMode.value = !isLayerMode.value; updateMesh(); };
-            const layerLevel = ref(1);
+            const layerLevel = ref(1); 
             const showGhost = ref(false);
-            const sliceAxis = ref('y'); // 'x', 'y', 'z'
+            const sliceAxis = ref('y');
             const cycleAxis = () => {
                 const axes = ['y', 'x', 'z'];
                 const idx = axes.indexOf(sliceAxis.value);
                 sliceAxis.value = axes[(idx+1)%3];
-                layerLevel.value = 1; // reset level on axis change
+                layerLevel.value = 1; 
             };
 
             const unitStates = reactive({ fluid: 0, gas: 0 });
@@ -460,6 +460,7 @@
                     errAir: 'ここには設置できません (空洞)',
                     confirmReset: '配置されたバルブをすべて削除しますか？',
                     toolValve: 'バルブ設置',
+                    // Items
                     'Dynamic Tank': 'ダイナミックタンク', 'Structural Glass': '構造用ガラス', 'Dynamic Valve': 'ダイナミックバルブ',
                     'Steel Ingot': '鋼鉄インゴット', 'Bucket': 'バケツ', 'Glass': 'ガラス', 'Basic Control Circuit': '基本制御回路'
                 },
@@ -475,6 +476,7 @@
                     errAir: 'Cannot place here (Air)',
                     confirmReset: 'Delete all valves?',
                     toolValve: 'Place Valve',
+                    // Items
                     'Dynamic Tank': 'Dynamic Tank', 'Structural Glass': 'Structural Glass', 'Dynamic Valve': 'Dynamic Valve',
                     'Steel Ingot': 'Steel Ingot', 'Bucket': 'Bucket', 'Glass': 'Glass', 'Basic Control Circuit': 'Basic Control Circuit'
                 }
@@ -727,27 +729,27 @@
                 interactiveMeshes = [];
 
                 const { x, y, z } = dims.value;
-                
-                // Axis logic
                 const axis = sliceAxis.value;
-                const currentSlice = layerLevel.value - 1; // 0-based
+                const currentSlice = layerLevel.value - 1; 
+                
+                // Ghost Mat
+                const ghostMat = new THREE.MeshLambertMaterial({ 
+                    map: textures.tank, color: 0x888888, transparent: true, opacity: 0.15, depthWrite: false 
+                });
 
-                // Arrays for active and ghost meshes
-                const frames=[], walls=[], valves=[], airs=[];
-                const gFrames=[], gWalls=[], gValves=[];
-                const frameC=[], wallC=[], valveC=[], airC=[];
-                const gFrameC=[], gWallC=[], gValveC=[];
+                const frames=[], walls=[], valves=[], airs=[], gFrames=[], gWalls=[], gValves=[];
+                const frameC=[], wallC=[], valveC=[], airC=[], gFrameC=[], gWallC=[], gValveC=[];
 
                 for(let ix=0; ix<x; ix++) {
                     for(let iy=0; iy<y; iy++) {
                         for(let iz=0; iz<z; iz++) {
                             
-                            // 3-Axis Slicing Logic
+                            // Ghost Logic: Show ALL blocks but make non-active ones ghost
                             let isGhost = false;
                             if (isLayerMode.value) {
                                 const val = (axis==='x'?ix : axis==='y'?iy : iz);
-                                if (val > currentSlice) continue; // Hide above/after
-                                if (val < currentSlice) {
+                                // Show ghosts for anything > current slice
+                                if (val > currentSlice) {
                                     if (showGhost.value) isGhost = true;
                                     else continue;
                                 }
@@ -774,7 +776,7 @@
                                     else { walls.push(mat); wallC.push({ ...coordObj, type: 'wall' }); }
                                 }
                             } else {
-                                // Air: Only interactive if active layer
+                                // Air: Only if NOT ghost
                                 if (!isGhost && isLayerMode.value) {
                                     airs.push(mat); airC.push({ ...coordObj, type: 'air' });
                                 }
@@ -785,22 +787,16 @@
 
                 const geo = new THREE.BoxGeometry(1,1,1);
                 
-                // Helper to create mesh
                 const create = (list, tex, coords, type, isGhost=false) => {
                     if(!list.length) return;
                     let mat;
                     
                     if (isGhost) {
-                        // Ghost: Texture with low opacity, no interaction
-                        mat = new THREE.MeshLambertMaterial({ 
-                            map: tex, color: tex ? 0xffffff : 0x888888,
-                            transparent: true, opacity: 0.15, depthWrite: false 
-                        });
+                        mat = ghostMat.clone();
+                        mat.map = tex; // Apply texture to ghost
                     } else if (type === 'air') {
-                        // Air: Invisible but clickable? No, faint visual aid
                         mat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.05, depthWrite: false }); 
                     } else {
-                        // Active
                         mat = new THREE.MeshLambertMaterial({ color: tex ? 0xffffff : 0x555555, map: tex });
                         if(type==='wall' && useGlass.value) {
                              mat.color.setHex(tex ? 0xffffff : 0x5d9bc0);
@@ -815,8 +811,6 @@
                     list.forEach((m,i)=>mesh.setMatrixAt(i,m));
                     mesh.userData.coords = coords;
                     scene.add(mesh);
-                    
-                    // Only active meshes are interactive
                     if (!isGhost) interactiveMeshes.push(mesh);
                 };
 
@@ -825,7 +819,7 @@
                 create(walls, useGlass.value ? textures.glass : textures.tank, wallC, 'wall');
                 create(airs, null, airC, 'air');
 
-                // Ghosts (visual only)
+                // Ghosts
                 create(gFrames, textures.tank, gFrameC, 'frame', true);
                 create(gValves, textures.valve, gValveC, 'valve', true);
                 create(gWalls, useGlass.value ? textures.glass : textures.tank, gWallC, 'wall', true);
@@ -844,7 +838,10 @@
                 const browserLang = navigator.language || navigator.userLanguage;
                 if (!browserLang.startsWith('ja')) lang.value = 'en';
 
-                valveCoords.value.add("1,0,0"); // 初期バルブ
+                // 初期配置: 1,1,0 = 前面・中央・一番下の「壁」 (フレームの上)
+                // 3x3x3なら フレームはy=0, 壁はy=1
+                valveCoords.value.add("1,1,0");
+                
                 initThree();
                 setTimeout(onResize, 100);
                 selectTool('valve');
