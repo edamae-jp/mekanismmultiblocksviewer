@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mekanism Planner v11.0</title>
+    <title>Mekanism Planner v12.0</title>
     <style>
-        /* --- デザイン変数 --- */
+        /* --- デザイン規定 --- */
         :root {
             --bg-color: #1a1a1d; --card-bg: #2d2d30; --input-bg: #1a1a1d;
             --dark-accent: #1C1361; 
             --main-accent: #5d9bc0; /* Theme Blue */
             --sub-accent: #e0ac5d;  /* Theme Yellow */
-            --error-color: #ff6b6b; /* Red */
-            --hover-color: #2A5669;
+            --error-color: #ff6b6b; --success-color: #56c596;
             --highlight-text: #5d9bc0; 
             --text-color: #e0e0e0; --sub-text-color: #888;
-            --border-color: #444; --success-color: #56c596;
+            --border-color: #444; 
             --active-tool-bg: rgba(93, 155, 192, 0.2);
             --active-tool-border: #5d9bc0;
             
@@ -25,7 +24,7 @@
         @media (prefers-color-scheme: light) {
             :root {
                 --bg-color: #f0f2f5; --card-bg: #ffffff; --input-bg: #f7f9fc;
-                --dark-accent: #1C1361; --main-accent: #5d9bc0; --hover-color: #2A5669;
+                --dark-accent: #1C1361; --main-accent: #5d9bc0;
                 --highlight-text: #1C1361; --text-color: #333333; --sub-text-color: #666666;
                 --border-color: #dce0e5; --error-color: #d32f2f; --success-color: #2a8a68;
                 --active-tool-bg: rgba(28, 19, 97, 0.1);
@@ -43,27 +42,28 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* --- ヘッダー --- */
+        /* --- ヘッダー (ガタつき防止: 高さ固定) --- */
         header { 
-            flex: 0 0 auto; margin-bottom: 15px; 
+            flex: 0 0 50px; margin-bottom: 10px; 
             display: flex; align-items: center; gap: 20px;
         }
-        h1 { margin: 0; font-size: 1.6rem; color: var(--highlight-text); }
+        h1 { margin: 0; font-size: 1.6rem; color: var(--highlight-text); line-height: 1.2; }
 
-        /* 言語スイッチ (固定幅でガタつき防止) */
+        /* 言語スイッチ */
         .lang-switch {
             position: relative; display: flex; align-items: center;
             background: var(--input-bg); border: 1px solid var(--border-color);
-            border-radius: 30px; padding: 4px; cursor: pointer; user-select: none;
+            border-radius: 30px; padding: 2px; cursor: pointer; user-select: none;
             width: 100px; height: 32px; box-sizing: border-box; flex-shrink: 0;
         }
         .lang-option {
             flex: 1; text-align: center; font-size: 0.8rem; font-weight: bold;
-            color: var(--sub-text-color); z-index: 2; transition: color 0.3s; line-height: 24px;
+            color: var(--sub-text-color); z-index: 2; transition: color 0.3s; 
+            line-height: 26px; /* 高さ固定 */
         }
         .lang-option.active { color: #fff; }
         .lang-bg {
-            position: absolute; top: 3px; left: 3px; height: calc(100% - 6px); width: calc(50% - 3px);
+            position: absolute; top: 2px; left: 2px; height: calc(100% - 4px); width: calc(50% - 2px);
             background: var(--main-accent); border-radius: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); z-index: 1;
@@ -71,17 +71,13 @@
         .lang-switch[data-lang="en"] .lang-bg { transform: translateX(100%); }
         @media (prefers-color-scheme: light) { .lang-option.active { color: #fff; } }
 
-        /* --- レイアウト (幅の最適化) --- */
+        /* --- レイアウト --- */
         .container {
             display: flex; gap: 24px; height: 100%; 
-            /* 幅の調整: 基本70%だが、狭くなりすぎないようにmin-widthを設定 */
-            width: 70%; 
-            min-width: 960px; /* ハーフウィンドウ維持用 */
-            max-width: 1600px; /* 広がりすぎ防止 */
+            width: 70%; min-width: 960px; max-width: 1600px;
             margin: 0 auto; overflow: hidden; padding-bottom: 20px;
             transition: width 0.3s;
         }
-        /* 画面が狭いときは幅を広げる */
         @media (max-width: 1400px) { .container { width: 90%; } }
         @media (max-width: 1000px) { .container { width: 98%; min-width: 0; } }
 
@@ -102,26 +98,26 @@
             flex-shrink: 0;
         }
 
+        /* 入力UI */
         .input-group { margin-bottom: 12px; }
-        label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 0.9rem; color: var(--text-color); }
+        label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 0.9rem; color: var(--text-color); line-height: 1.2; }
         
         .number-control {
             display: flex; align-items: center; border: 1px solid var(--border-color);
-            border-radius: 6px; background-color: var(--input-bg); overflow: hidden;
+            border-radius: 6px; background-color: var(--input-bg); overflow: hidden; height: 42px;
         }
         .number-control:focus-within { border-color: var(--highlight-text); }
         input[type="number"] {
-            width: 100%; padding: 10px; border: none; background: transparent;
+            width: 100%; padding: 0 10px; border: none; background: transparent; height: 100%;
             color: var(--text-color); text-align: left; font-size: 1.1rem;
         }
         input[type="number"]:focus { outline: none; }
 
-        /* トグルボタン (固定幅でガタつき防止) */
         button.toggle-btn {
             background-color: var(--dark-accent); border: 1px solid var(--dark-accent); color: #fff;
-            padding: 10px 20px; border-radius: 30px; cursor: pointer; font-size: 0.95rem; font-weight: bold;
+            padding: 0 20px; border-radius: 30px; cursor: pointer; font-size: 0.95rem; font-weight: bold;
             width: 100%; display: flex; justify-content: space-between; align-items: center;
-            transition: all 0.2s; margin-top: 5px; min-height: 44px;
+            transition: all 0.2s; margin-top: 5px; height: 44px; /* 高さ固定 */
         }
         button.toggle-btn:hover { background-color: var(--hover-color); transform: translateY(-1px); }
         button.toggle-btn.inactive { background-color: transparent; color: var(--text-color); border-color: var(--border-color); }
@@ -133,7 +129,7 @@
         }
         #three-canvas { width: 100%; height: 100%; outline: none; cursor: default; }
 
-        /* --- ツールパレット --- */
+        /* ツールパレット */
         .palette {
             position: absolute; top: 10px; right: 10px;
             background: var(--card-bg); border: 1px solid var(--border-color);
@@ -148,7 +144,6 @@
             background: rgba(255,255,255,0.05); color: var(--text-color);
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); overflow: hidden;
         }
-        
         .tool-btn:hover, .tool-btn.active {
             background: var(--active-tool-bg); border-color: var(--active-tool-border);
             padding-right: 12px; justify-content: flex-start;
@@ -162,15 +157,17 @@
             max-width: 150px; opacity: 1; margin-left: 4px; transform: translateX(0);
         }
 
-        /* --- 結果エリア --- */
+        /* 結果エリア */
         .result-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         
         .capacity-header {
             flex: 0 0 auto; display: flex; gap: 40px; justify-content: center;
             border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 10px;
         }
-        .cap-item { display: flex; align-items: center; gap: 12px; }
+        .cap-item { display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; transition: opacity 0.2s; }
+        .cap-item:hover { opacity: 0.8; }
         .cap-icon { width: 36px; height: 36px; flex-shrink: 0; }
+        
         .cap-val { font-size: 1.8rem; font-weight: bold; line-height: 1; font-feature-settings: "tnum"; }
         .cap-label { font-size: 0.8rem; color: var(--sub-text-color); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
         .val-fluid { color: var(--fluid-color); }
@@ -207,29 +204,18 @@
         .toast-msg.show { opacity: 1; }
         .toast-msg.persistent { background: rgba(255, 165, 0, 0.9); color: #fff; pointer-events: auto; }
 
-        /* 実験機能トグル */
         .experimental-section { margin-top: auto; padding-top: 15px; border-top: 1px dashed var(--border-color); }
         .exp-title { font-size: 0.8rem; color: var(--sub-text-color); margin-bottom: 8px; font-weight: bold; }
         .form-check { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 0.85rem; cursor: pointer; }
 
-        /* --- 高度なレイヤーコントローラー --- */
-        .slice-control-panel {
+        .layer-control {
             position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); padding: 10px 15px; border-radius: 12px;
-            display: flex; flex-direction: column; gap: 8px;
-            backdrop-filter: blur(4px); border: 1px solid var(--border-color);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            font-size: 0.8rem; color: #fff;
+            background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px;
+            display: flex; align-items: center; gap: 12px; backdrop-filter: blur(4px);
+            border: 1px solid var(--border-color); box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-        .slice-row { display: flex; align-items: center; gap: 10px; justify-content: center; }
-        .slice-btn-group { display: flex; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
-        .slice-btn {
-            background: transparent; border: none; color: #aaa; padding: 4px 8px; cursor: pointer; font-size: 0.75rem;
-            transition: all 0.2s;
-        }
-        .slice-btn.active { background: var(--main-accent); color: #fff; }
-        .slice-btn:hover:not(.active) { color: #fff; }
         .layer-slider { width: 140px; accent-color: var(--main-accent); cursor: pointer; }
+        .layer-text { font-size: 0.8rem; color: #fff; font-weight: bold; white-space: nowrap; }
 
         .footer-signature {
             position: fixed; bottom: 10px; right: 15px;
@@ -243,7 +229,7 @@
 
 <div id="app" style="height: 100%; display: flex; flex-direction: column;">
     <header>
-        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v11.0</small></h1>
+        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v12.0</small></h1>
         
         <div class="lang-switch" :data-lang="lang" @click="toggleLang">
             <div class="lang-bg"></div>
@@ -310,26 +296,9 @@
                     </div>
                 </div>
 
-                <div v-if="useLayers" class="slice-control-panel">
-                    <div class="slice-row">
-                        <span>Axis:</span>
-                        <div class="slice-btn-group">
-                            <button class="slice-btn" :class="{active: sliceAxis==='y'}" @click="sliceAxis='y'">Y (H)</button>
-                            <button class="slice-btn" :class="{active: sliceAxis==='x'}" @click="sliceAxis='x'">X (W)</button>
-                            <button class="slice-btn" :class="{active: sliceAxis==='z'}" @click="sliceAxis='z'">Z (D)</button>
-                        </div>
-                    </div>
-                    <div class="slice-row">
-                        <div class="slice-btn-group">
-                            <button class="slice-btn" :class="{active: sliceMode==='below'}" @click="sliceMode='below'" title="Hide Above">▼ Below</button>
-                            <button class="slice-btn" :class="{active: sliceMode==='single'}" @click="sliceMode='single'" title="Single Layer">■ Single</button>
-                            <button class="slice-btn" :class="{active: sliceMode==='above'}" @click="sliceMode='above'" title="Hide Below">▲ Above</button>
-                        </div>
-                    </div>
-                    <div class="slice-row">
-                        <span>Pos: {{ sliceLevel }}</span>
-                        <input type="range" class="layer-slider" v-model.number="sliceLevel" :min="0" :max="sliceMax">
-                    </div>
+                <div v-if="useLayers" class="layer-control">
+                    <span class="layer-text">Y-Limit: {{ layerLevel }}</span>
+                    <input type="range" class="layer-slider" v-model.number="layerLevel" min="1" :max="dims.y">
                 </div>
 
                 <div class="error-container">
@@ -340,22 +309,23 @@
 
             <div class="card result-card">
                 <div class="capacity-header">
-                    <div class="cap-item">
+                    <div class="cap-item" @click="cycleUnit('fluid')" title="Change Unit">
                         <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="var(--fluid-color)" stroke-width="2">
                             <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" fill="currentColor" fill-opacity="0.2"/>
                         </svg>
                         <div>
                             <div class="cap-label">{{ t('fluidCap') }}</div>
-                            <div class="cap-val val-fluid">{{ formatNumber(volume * 16000) }}<span class="unit">mB</span></div>
+                            <div class="cap-val val-fluid">{{ getFormattedCap(volume * 16000, 'fluid') }}<span class="unit">{{ getUnit('fluid') }}</span></div>
                         </div>
                     </div>
-                    <div class="cap-item">
+                    <div class="cap-item" @click="cycleUnit('gas')" title="Change Unit">
                         <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="var(--gas-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17.5 19c0-1.7-1.3-3-3-3h-5c-1.7 0-3 1.3-3 3 .8 0 1.5-.7 1.5-1.5S7.2 16 6.5 16c-1.7 0-3 1.3-3 3s1.3 3 3 3h11c1.7 0 3-1.3 3-3z M19 13c-1.7 0-3 1.3-3 3h-2c0-2.8 2.2-5 5-5 .8 0 1.5-.7 1.5-1.5S19.7 8 19 8c-1.7 0-3 1.3-3 3 .8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5" fill="currentColor" fill-opacity="0.2"/>
+                            <path d="M6 16c0-2.5 1-4 3-5 0-3 3-4 5-4 3 0 5 2 5 5 2.5 1 2.5 4 0 5H6z" fill="currentColor" fill-opacity="0.2"/>
+                            <path d="M8 20h8" opacity="0.5"/>
                         </svg>
                         <div>
                             <div class="cap-label">{{ t('gasCap') }}</div>
-                            <div class="cap-val val-gas">{{ formatNumber(volume * 160000) }}<span class="unit">mB</span></div>
+                            <div class="cap-val val-gas">{{ getFormattedCap(volume * 16000000, 'gas') }}<span class="unit">{{ getUnit('gas') }}</span></div>
                         </div>
                     </div>
                 </div>
@@ -423,11 +393,24 @@
             const lang = ref('jp');
             const toggleLang = () => { lang.value = lang.value === 'jp' ? 'en' : 'jp'; };
 
-            // スライス機能 (Beta)
             const useLayers = ref(false);
-            const sliceAxis = ref('y');
-            const sliceMode = ref('below'); // below, above, single
-            const sliceLevel = ref(0);
+            const layerLevel = ref(5);
+
+            // 単位状態: 0=mB, 1=B, 2=kB, 3=MB
+            const unitStates = reactive({ fluid: 0, gas: 0 });
+            const cycleUnit = (type) => { unitStates[type] = (unitStates[type] + 1) % 4; };
+            const getUnit = (type) => {
+                const units = ['mB', 'B', 'kB', 'MB'];
+                return units[unitStates[type]];
+            };
+            const getFormattedCap = (val, type) => {
+                const s = unitStates[type];
+                let v = val;
+                if(s===1) v /= 1000;
+                else if(s===2) v /= 1000000;
+                else if(s===3) v /= 1000000000;
+                return v.toLocaleString();
+            };
 
             // 辞書
             const dictionary = {
@@ -524,19 +507,14 @@
                 return (x - 2) * (y - 2) * (z - 2);
             });
 
-            // スライスの最大値
-            const sliceMax = computed(() => {
-                return dims.value[sliceAxis.value] - 1;
-            });
-
             const validateValves = () => {
                 const { x, y, z } = dims.value;
                 const toDelete = [];
                 valveCoords.value.forEach(coord => {
                     const [ix, iy, iz] = coord.split(',').map(Number);
                     if (ix < 0 || ix >= x || iy < 0 || iy >= y || iz < 0 || iz >= z) { toDelete.push(coord); return; }
-                    const onX = (ix===0||ix===x-1)?1:0, onY = (iy===0||iy===y-1)?1:0, onZ = (iz===0||iz===z-1)?1:0;
-                    if ((onX+onY+onZ) !== 1) toDelete.push(coord);
+                    const surfaceCount = ((ix===0||ix===x-1)?1:0) + ((iy===0||iy===y-1)?1:0) + ((iz===0||iz===z-1)?1:0);
+                    if (surfaceCount !== 1) toDelete.push(coord);
                 });
                 toDelete.forEach(k => valveCoords.value.delete(k));
             };
@@ -657,15 +635,15 @@
                         const tool = tools.find(t => t.id === currentTool.value);
                         if (tool) {
                             if (tool.allowedOn.includes(type)) {
-                                highlightMesh.material.color.setHex(0x5d9bc0); // 青 (設置可)
+                                highlightMesh.material.color.setHex(0x5d9bc0); // Blue
                                 highlightMesh.visible = true;
                                 renderer.domElement.style.cursor = 'pointer';
                             } else if (type === 'valve') {
-                                highlightMesh.material.color.setHex(0xe0ac5d); // 黄 (削除可)
+                                highlightMesh.material.color.setHex(0xe0ac5d); // Yellow
                                 highlightMesh.visible = true;
                                 renderer.domElement.style.cursor = 'pointer';
                             } else {
-                                highlightMesh.material.color.setHex(0xff6b6b); // 赤 (不可)
+                                highlightMesh.material.color.setHex(0xff6b6b); // Red
                                 highlightMesh.visible = true;
                                 renderer.domElement.style.cursor = 'default';
                             }
@@ -716,28 +694,17 @@
                 interactiveMeshes = [];
 
                 const { x, y, z } = dims.value;
+                const maxY = useLayers.value ? layerLevel.value : y;
                 const frames=[], walls=[], valves=[];
                 const frameCoords=[], wallCoords=[], valveCoordsArr=[];
 
                 for(let ix=0; ix<x; ix++) {
                     for(let iy=0; iy<y; iy++) {
+                        if (iy >= maxY) continue;
                         for(let iz=0; iz<z; iz++) {
-                            
-                            // スライス処理
-                            if (useLayers.value) {
-                                const level = sliceLevel.value;
-                                const axisVal = (sliceAxis.value==='x')?ix : (sliceAxis.value==='y')?iy : iz;
-                                
-                                if (sliceMode.value === 'below' && axisVal >= level) continue;
-                                if (sliceMode.value === 'above' && axisVal <= level) continue;
-                                if (sliceMode.value === 'single' && axisVal !== level) continue;
-                            }
-
-                            // 座標計算 (左・下・手前基準)
                             const posX = ix - (x-1)/2;
                             const posY = iy - (y-1)/2;
                             const posZ = (z-1)/2 - iz; 
-
                             const isXEdge = (ix===0||ix===x-1), isYEdge = (iy===0||iy===y-1), isZEdge = (iz===0||iz===z-1);
                             const edgeCount = (isXEdge?1:0) + (isYEdge?1:0) + (isZEdge?1:0);
                             const mat = new THREE.Matrix4().setPosition(posX, posY, posZ);
@@ -752,10 +719,6 @@
                                 } else {
                                     walls.push(mat); wallCoords.push({ ...coordObj, type: 'wall' });
                                 }
-                            } else {
-                                // 内部 (スライスで露出したときにクリック判定できるようにする)
-                                // 本来は空洞だが、将来的な拡張(内部パーツ)のために配置可能エリアとしてwall扱いにするなど可
-                                // 今回はダイナミックタンクなので空洞
                             }
                         }
                     }
@@ -788,21 +751,19 @@
 
             watch(dims, () => { 
                 validateValves();
-                if(sliceLevel.value >= dims.value[sliceAxis.value]) sliceLevel.value = dims.value[sliceAxis.value]-1;
+                if(layerLevel.value > dims.value.y) layerLevel.value = dims.value.y;
                 updateMesh(); 
             }, { deep: true });
-            
-            watch([useGlass, useLayers, sliceAxis, sliceMode, sliceLevel], updateMesh);
+            watch([useGlass, useLayers, layerLevel], updateMesh);
 
             onMounted(() => {
                 const browserLang = navigator.language || navigator.userLanguage;
                 if (!browserLang.startsWith('ja')) lang.value = 'en';
 
-                valveCoords.value.add("1,0,0"); valveCoords.value.add("1,0,2");
+                // 初期バルブ位置: "1,0,0" = 中央, 下, 手前 (x=1, y=0, z=0) 3x3x3の場合
+                // インデックス基準なので、サイズが変わっても "1,0,0" は常に「左から2番目、一番下、一番手前」
+                valveCoords.value.add("1,0,0");
                 
-                // 初期スライスレベル (最大の半分)
-                sliceLevel.value = Math.floor(dims.value.y / 2) + 1;
-
                 initThree();
                 setTimeout(onResize, 100);
                 selectTool('valve');
@@ -815,7 +776,8 @@
                 handleWheel, toastMessage, persistentError, isBlock, 
                 currentTool, tools, selectTool, resetAll, 
                 lang, toggleLang, t, 
-                useLayers, sliceAxis, sliceMode, sliceLevel, sliceMax
+                useLayers, layerLevel,
+                cycleUnit, getUnit, getFormattedCap
             };
         }
     }).mount('#app');
