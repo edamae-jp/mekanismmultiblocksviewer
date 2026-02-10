@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mekanism Planner v6.5</title>
+    <title>Mekanism Planner v6.6</title>
     <style>
         /* --- デザイン規定 --- */
         :root {
@@ -44,16 +44,13 @@
             flex: 1 1 320px;
             min-width: 300px; max-width: 400px;
             display: flex; flex-direction: column; gap: 15px;
-            overflow-y: auto;
-            padding-right: 5px;
+            overflow-y: auto; padding-right: 5px;
         }
         .panel-left::-webkit-scrollbar { width: 6px; }
         .panel-left::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 3px; }
 
         .panel-right {
-            flex: 2 1 0;
-            display: flex; flex-direction: column;
-            min-width: 0;
+            flex: 2 1 0; display: flex; flex-direction: column; min-width: 0;
         }
 
         .card {
@@ -91,10 +88,9 @@
             flex: 1; width: 100%; height: 100%;
             background-color: rgba(0,0,0,0.05); border-radius: 8px;
             overflow: hidden; border: 1px solid var(--border-color); position: relative;
-            cursor: crosshair; /* 操作可能であることを示す */
+            cursor: crosshair;
         }
         
-        /* エラーメッセージ (トースト) */
         .ui-overlay-fixed {
             position: absolute; top: 10px; right: 10px; pointer-events: none;
             display: flex; flex-direction: column; align-items: flex-end; z-index: 10;
@@ -107,19 +103,16 @@
         .toast-msg.show { opacity: 1; }
         .toast-msg.warning { background: rgba(255, 165, 0, 0.9); color: #fff; }
 
-        /* フローティングツールチップ */
         .floating-tooltip {
             position: fixed; pointer-events: none; z-index: 100;
             background: rgba(0, 0, 0, 0.8); color: #fff; padding: 6px 10px;
             border-radius: 4px; font-size: 0.8rem; white-space: nowrap;
-            transform: translate(15px, 15px); /* マウスの右下に表示 */
+            transform: translate(15px, 15px);
             opacity: 0; transition: opacity 0.1s;
-            border: 1px solid rgba(255,255,255,0.2);
-            backdrop-filter: blur(2px);
+            border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(2px);
         }
         .floating-tooltip.show { opacity: 1; }
 
-        /* リスト */
         .action-list { list-style: none; padding: 0; margin: 0; }
         .action-item {
             display: flex; justify-content: space-between; align-items: center;
@@ -127,20 +120,22 @@
         }
         .action-item:last-child { border-bottom: none; }
         
-        /* --- CSS 3D Icon & Visibility Fix --- */
+        /* --- Icon Styling Fix --- */
         .icon-container {
-            width: 30px; height: 30px; margin-right: 12px;
+            width: 32px; height: 32px; margin-right: 12px;
             display: flex; align-items: center; justify-content: center;
-            /* 視認性向上のための背景と枠 */
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05); /* 背景色維持 */
+            border: 1px solid var(--border-color);
             border-radius: 6px;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
         }
         
-        .item-icon-img { width: 80%; height: 80%; object-fit: contain; }
+        /* アイコン画像の視認性向上: ドロップシャドウで縁取り効果を出す */
+        .item-icon-img { 
+            width: 75%; height: 75%; object-fit: contain;
+            filter: drop-shadow(0 0 1px rgba(255,255,255,0.7)); 
+        }
 
-        /* 立体ブロックアイコン */
+        /* 3Dブロックアイコンの視認性向上 */
         .cube-icon {
             width: 14px; height: 14px; position: relative;
             transform-style: preserve-3d;
@@ -150,12 +145,13 @@
             position: absolute; width: 14px; height: 14px;
             background-size: cover; background-repeat: no-repeat;
             image-rendering: pixelated;
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+            /* 輪郭線とグローを追加 */
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)); 
         }
-        /* 明暗差をつけて立体感を出す */
-        .cube-face.front { transform: translateZ(7px); filter: brightness(1.0); }
-        .cube-face.top   { transform: rotateX(90deg) translateZ(7px); filter: brightness(1.2); }
-        .cube-face.right { transform: rotateY(90deg) translateZ(7px); filter: brightness(0.7); }
+        .cube-face.front { transform: translateZ(7px); filter: brightness(1.1); }
+        .cube-face.top   { transform: rotateX(90deg) translateZ(7px); filter: brightness(1.3); }
+        .cube-face.right { transform: rotateY(90deg) translateZ(7px); filter: brightness(0.8); }
 
         .item-name { display: flex; align-items: center; }
         .footer-signature { font-size: 0.8rem; color: #2A5669; font-weight: bold; text-align: right; margin-top: 5px; }
@@ -165,7 +161,7 @@
 
 <div id="app">
     <header>
-        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v6.5</small></h1>
+        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v6.6</small></h1>
     </header>
 
     <div class="main-container">
@@ -276,10 +272,8 @@
             const valveCoords = ref(new Set()); 
             const toastMessage = ref('');
             let toastTimer = null;
-
-            // ツールチップ用
             const tooltip = ref({ visible: false, x: 0, y: 0, text: '' });
-            const hasInteracted = ref(false); // 一度でも操作したかどうか
+            const hasInteracted = ref(false);
 
             // --- Constants ---
             const translations = {
@@ -313,7 +307,7 @@
             const onImgError = (e) => { e.target.style.display = 'none'; };
             const formatNumber = (n) => n.toLocaleString();
             
-            // ガラスもブロックとして扱うように追加
+            // ガラスもブロックとして扱う
             const isBlock = (name) => {
                 return ['Dynamic Tank', 'Structural Glass', 'Dynamic Valve', 'Glass'].includes(name);
             };
@@ -338,6 +332,50 @@
                 return (x - 2) * (y - 2) * (z - 2);
             });
 
+            // バルブの整合性チェックと削除処理
+            const validateValves = () => {
+                const { x, y, z } = dims.value;
+                // 有効範囲（中心0からのオフセット）
+                const xMin = -(x - 1) / 2;
+                const xMax = (x - 1) / 2;
+                const yMin = -(y - 1) / 2;
+                const yMax = (y - 1) / 2;
+                const zMin = -(z - 1) / 2;
+                const zMax = (z - 1) / 2;
+
+                const toDelete = [];
+                valveCoords.value.forEach(coord => {
+                    const [vx, vy, vz] = coord.split(',').map(Number);
+                    
+                    // 1. 新しいタンクの範囲内に存在するか
+                    const inX = vx >= xMin && vx <= xMax;
+                    const inY = vy >= yMin && vy <= yMax;
+                    const inZ = vz >= zMin && vz <= zMax;
+
+                    if (!inX || !inY || !inZ) {
+                        toDelete.push(coord);
+                        return;
+                    }
+
+                    // 2. 表面（壁）にあるか（内部やフレームはNG）
+                    // 座標がMinかMaxに一致しているか
+                    const onXEdge = (vx === xMin || vx === xMax);
+                    const onYEdge = (vy === yMin || vy === yMax);
+                    const onZEdge = (vz === zMin || vz === zMax);
+                    
+                    // ちょうど1つの面に乗っている必要がある
+                    // (2つ以上の面に乗っている＝エッジ/コーナーなのでフレーム位置)
+                    const surfaces = (onXEdge ? 1 : 0) + (onYEdge ? 1 : 0) + (onZEdge ? 1 : 0);
+
+                    if (surfaces !== 1) {
+                        toDelete.push(coord);
+                    }
+                });
+
+                // 不正なバルブを削除
+                toDelete.forEach(k => valveCoords.value.delete(k));
+            };
+
             const persistentError = computed(() => {
                 if(valveCoords.value.size === 0) return "バルブが設置されていません (No Valves)";
                 return "";
@@ -349,15 +387,8 @@
                 const totalShell = (x * y * z) - ((x - 2) * (y - 2) * (z - 2));
                 const totalWall = totalShell - frameCount;
 
-                let validValveCount = 0;
-                valveCoords.value.forEach(coord => {
-                    const [vx, vy, vz] = coord.split(',').map(Number);
-                    if (vx >= -(x-1)/2 && vx <= (x-1)/2 &&
-                        vy >= -(y-1)/2 && vy <= (y-1)/2 &&
-                        vz >= -(z-1)/2 && vz <= (z-1)/2) {
-                        validValveCount++;
-                    }
-                });
+                // validateValvesで整理されているはずだが、念のため現在のセットサイズを使用
+                let validValveCount = valveCoords.value.size;
 
                 let result = {};
                 if (validValveCount > 0) result['Dynamic Valve'] = validValveCount;
@@ -387,7 +418,6 @@
             let scene, camera, renderer, controls, meshGroup;
             let raycaster, mouse;
             let interactiveMeshes = [];
-            // ドラッグ判定用の変数
             let isDragging = false;
             let mouseDownPos = { x: 0, y: 0 };
             let mouseDownTime = 0;
@@ -416,7 +446,6 @@
 
                 window.addEventListener('resize', onResize);
                 
-                // イベントリスナーの分離 (ドラッグ判定のため)
                 const canvas = renderer.domElement;
                 canvas.addEventListener('pointerdown', onPointerDown);
                 canvas.addEventListener('pointerup', onPointerUp);
@@ -440,46 +469,25 @@
                 renderer.setSize(container.clientWidth, container.clientHeight);
             };
 
-            // ホバー時の処理 (ツールチップ)
             const onPointerMove = (event) => {
-                // 操作済みなら表示しない
                 if (hasInteracted.value) {
                     tooltip.value.visible = false;
                     return;
                 }
-
                 const rect = renderer.domElement.getBoundingClientRect();
                 mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(interactiveMeshes);
-
                 tooltip.value.x = event.clientX;
                 tooltip.value.y = event.clientY;
 
                 if (intersects.length > 0) {
-                    const hit = intersects[0];
-                    const instanceId = hit.instanceId;
-                    const mesh = hit.object;
-
-                    if (mesh.userData && mesh.userData.coords && mesh.userData.coords[instanceId]) {
-                        const { type } = mesh.userData.coords[instanceId];
-                        if (type === 'wall') {
-                            tooltip.value.text = "左クリック: バルブ設置";
-                            tooltip.value.visible = true;
-                        } else if (type === 'valve') {
-                            tooltip.value.text = "右クリック: バルブ削除";
-                            tooltip.value.visible = true;
-                        } else {
-                            tooltip.value.visible = false;
-                        }
-                    } else {
-                        tooltip.value.visible = false;
-                    }
-                } else {
-                    tooltip.value.visible = false;
-                }
+                    const { type } = intersects[0].object.userData.coords[intersects[0].instanceId];
+                    if (type === 'wall') { tooltip.value.text = "左クリック: バルブ設置"; tooltip.value.visible = true; }
+                    else if (type === 'valve') { tooltip.value.text = "右クリック: バルブ削除"; tooltip.value.visible = true; }
+                    else { tooltip.value.visible = false; }
+                } else { tooltip.value.visible = false; }
             };
 
             const onPointerDown = (event) => {
@@ -490,51 +498,28 @@
 
             const onPointerUp = (event) => {
                 if (event.button !== 0 && event.button !== 2) return;
+                const moveDist = Math.hypot(event.clientX - mouseDownPos.x, event.clientY - mouseDownPos.y);
+                if (moveDist > 5 || (performance.now() - mouseDownTime) > 300) return; 
 
-                const mouseUpPos = { x: event.clientX, y: event.clientY };
-                const moveDist = Math.hypot(mouseUpPos.x - mouseDownPos.x, mouseUpPos.y - mouseDownPos.y);
-                const timeDiff = performance.now() - mouseDownTime;
-
-                // 移動距離が5px以上、または時間が300ms以上ならドラッグとみなして処理しない
-                if (moveDist > 5 || timeDiff > 300) {
-                    return; 
-                }
-
-                // ここからクリック判定
                 const rect = renderer.domElement.getBoundingClientRect();
                 mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(interactiveMeshes);
 
                 if (intersects.length > 0) {
                     const hit = intersects[0];
-                    const instanceId = hit.instanceId;
-                    const mesh = hit.object;
+                    const { x, y, z, type } = hit.object.userData.coords[hit.instanceId];
+                    const coordKey = `${x},${y},${z}`;
 
-                    if (mesh.userData && mesh.userData.coords && mesh.userData.coords[instanceId]) {
-                        const { x, y, z, type } = mesh.userData.coords[instanceId];
-                        const coordKey = `${x},${y},${z}`;
+                    if (type === 'frame') { showToast("そこには設置できません (Frame)"); return; }
 
-                        if (type === 'frame') {
-                            showToast("そこには設置できません (Frame)");
-                            return;
-                        }
-
-                        if (event.button === 0) { // 左クリック
-                            if (type !== 'valve') {
-                                valveCoords.value.add(coordKey);
-                                updateMesh();
-                                hasInteracted.value = true;
-                            }
-                        } else if (event.button === 2) { // 右クリック
-                            if (type === 'valve') {
-                                valveCoords.value.delete(coordKey);
-                                updateMesh();
-                                hasInteracted.value = true;
-                            }
-                        }
+                    if (event.button === 0 && type !== 'valve') {
+                        valveCoords.value.add(coordKey);
+                        updateMesh(); hasInteracted.value = true;
+                    } else if (event.button === 2 && type === 'valve') {
+                        valveCoords.value.delete(coordKey);
+                        updateMesh(); hasInteracted.value = true;
                     }
                 }
             };
@@ -564,22 +549,18 @@
                             const posX = i - (x-1)/2;
                             const posY = j - (y-1)/2;
                             const posZ = k - (z-1)/2;
-
                             const isEdge = ((i===0||i===x-1)?1:0) + ((j===0||j===y-1)?1:0) + ((k===0||k===z-1)?1:0);
                             const mat = new THREE.Matrix4().setPosition(posX, posY, posZ);
                             const coordObj = { x: posX, y: posY, z: posZ };
                             const coordKey = `${posX},${posY},${posZ}`;
 
                             if (isEdge >= 2) {
-                                frames.push(mat);
-                                frameCoords.push({ ...coordObj, type: 'frame' });
+                                frames.push(mat); frameCoords.push({ ...coordObj, type: 'frame' });
                             } else if (isEdge === 1) {
                                 if (valveCoords.value.has(coordKey)) {
-                                    valves.push(mat);
-                                    valveCoordsArr.push({ ...coordObj, type: 'valve' });
+                                    valves.push(mat); valveCoordsArr.push({ ...coordObj, type: 'valve' });
                                 } else {
-                                    walls.push(mat);
-                                    wallCoords.push({ ...coordObj, type: 'wall' });
+                                    walls.push(mat); wallCoords.push({ ...coordObj, type: 'wall' });
                                 }
                             }
                         }
@@ -587,54 +568,37 @@
                 }
 
                 const geo = new THREE.BoxGeometry(1,1,1);
-                
-                if(frames.length) {
-                    const mat = new THREE.MeshLambertMaterial({ color: textures.tank ? 0xffffff : 0x555555, map: textures.tank });
-                    const mesh = new THREE.InstancedMesh(geo, mat, frames.length);
-                    frames.forEach((m,i) => mesh.setMatrixAt(i,m));
-                    mesh.userData.coords = frameCoords;
-                    meshGroup.add(mesh);
-                    interactiveMeshes.push(mesh);
-                }
-
-                if(valves.length) {
-                    const mat = new THREE.MeshLambertMaterial({ color: textures.valve ? 0xffffff : 0xaa8800, map: textures.valve });
-                    const mesh = new THREE.InstancedMesh(geo, mat, valves.length);
-                    valves.forEach((m,i) => mesh.setMatrixAt(i,m));
-                    mesh.userData.coords = valveCoordsArr;
-                    meshGroup.add(mesh);
-                    interactiveMeshes.push(mesh);
-                }
-
-                if(walls.length) {
-                    let mat;
-                    if(useGlass.value) {
-                        mat = new THREE.MeshLambertMaterial({
-                            color: textures.glass ? 0xffffff : 0x5d9bc0,
-                            map: textures.glass,
-                            transparent: true, opacity: textures.glass ? 1.0 : 0.3,
-                            side: THREE.DoubleSide, depthWrite: false
-                        });
-                    } else {
-                        mat = new THREE.MeshLambertMaterial({ color: textures.tank ? 0xffffff : 0x555555, map: textures.tank });
+                const makeMesh = (list, tex, coords) => {
+                    if(!list.length) return;
+                    const mat = new THREE.MeshLambertMaterial({ color: tex ? 0xffffff : 0x555555, map: tex });
+                    if(coords[0].type === 'wall' && useGlass.value) {
+                         mat.color.setHex(tex ? 0xffffff : 0x5d9bc0);
+                         mat.transparent = true; mat.opacity = tex ? 1.0 : 0.3;
+                         mat.side = THREE.DoubleSide; mat.depthWrite = false;
+                    } else if (coords[0].type === 'valve') {
+                         mat.color.setHex(tex ? 0xffffff : 0xaa8800);
                     }
-                    const mesh = new THREE.InstancedMesh(geo, mat, walls.length);
-                    walls.forEach((m,i) => mesh.setMatrixAt(i,m));
-                    mesh.userData.coords = wallCoords;
+                    const mesh = new THREE.InstancedMesh(geo, mat, list.length);
+                    list.forEach((m,i)=>mesh.setMatrixAt(i,m));
+                    mesh.userData.coords = coords;
                     meshGroup.add(mesh);
                     interactiveMeshes.push(mesh);
-                }
+                };
+
+                makeMesh(frames, textures.tank, frameCoords);
+                makeMesh(valves, textures.valve, valveCoordsArr);
+                makeMesh(walls, useGlass.value ? textures.glass : textures.tank, wallCoords);
             };
 
-            const animate = () => {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            };
+            const animate = () => { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
 
-            watch([dims.value, useGlass], () => {
+            // 寸法変更時の監視: 整合性チェック -> 描画更新
+            watch(dims, () => {
+                validateValves();
                 updateMesh();
             }, { deep: true });
+            
+            watch(useGlass, updateMesh);
 
             onMounted(() => {
                 valveCoords.value.add("0,0,1");
@@ -642,10 +606,7 @@
                 initThree();
                 setTimeout(onResize, 100);
             });
-
-            onBeforeUnmount(() => {
-                window.removeEventListener('resize', onResize);
-            });
+            onBeforeUnmount(() => { window.removeEventListener('resize', onResize); });
 
             return {
                 dims, useGlass, volume, blocks, rawMaterials,
