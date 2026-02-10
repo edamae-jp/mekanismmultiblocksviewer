@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mekanism Planner v17.2</title>
+    <title>Mekanism Planner v17.3</title>
     <style>
         /* --- デザイン変数 --- */
         :root {
@@ -175,15 +175,19 @@
             background: rgba(255,255,255,0.05); color: var(--text-color);
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); overflow: hidden;
         }
+        /* 選択中・ホバー時のスタイル */
         .tool-btn:hover, .tool-btn.active {
             background: var(--active-tool-bg); border-color: var(--active-tool-border);
             padding-right: 12px; justify-content: flex-start;
         }
+        
         .tool-icon-wrap { width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        
         .tool-text {
             max-width: 0; opacity: 0; white-space: nowrap; font-weight: bold; font-size: 0.9rem;
             transition: all 0.3s ease; transform: translateX(10px);
         }
+        /* activeクラスで展開 (初期はCSSで隠してJSで制御) */
         .tool-btn:hover .tool-text, .tool-btn.active .tool-text {
             max-width: 150px; opacity: 1; margin-left: 4px; transform: translateX(0);
         }
@@ -225,10 +229,10 @@
         }
         .item-icon-img { width: 80%; height: 80%; object-fit: contain; filter: drop-shadow(0 0 1px rgba(255,255,255,0.8)); }
         
-        /* 3Dブロックアイコン (修正: containで切れを防ぐ) */
+        /* 3Dブロックアイコン (修正: 100% 100% で全面カバー) */
         .cube-icon { width: 14px; height: 14px; position: relative; transform-style: preserve-3d; transform: rotateX(-30deg) rotateY(45deg); }
         .cube-face {
-            position: absolute; width: 14px; height: 14px; background-size: contain; image-rendering: pixelated;
+            position: absolute; width: 14px; height: 14px; background-size: 100% 100%; image-rendering: pixelated;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3); filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)); 
             background-color: #555;
         }
@@ -257,7 +261,7 @@
 
 <div id="app" style="height: 100%; display: flex; flex-direction: column;">
     <header>
-        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v17.2</small></h1>
+        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v17.3</small></h1>
         
         <div class="lang-switch" :data-lang="lang" @click="toggleLang">
             <div class="lang-bg"></div>
@@ -350,22 +354,22 @@
             <div class="card result-card">
                 <div class="capacity-header">
                     <div class="cap-grid">
-                        <div class="cap-item" @click="cycleUnit" title="Change Unit">
+                        <div class="cap-item" @click="cycleUnit('fluid')" title="Change Unit">
                             <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="var(--fluid-color)" stroke-width="2">
                                 <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" fill="currentColor" fill-opacity="0.2"/>
                             </svg>
                             <div>
                                 <div class="cap-label">{{ t('fluidCap') }}</div>
-                                <div class="cap-val val-fluid">{{ getFormattedCap(volume * fluidPerTank) }}<span class="unit">{{ getUnit() }}</span></div>
+                                <div class="cap-val val-fluid">{{ getFormattedCap(volume * fluidPerTank, 'fluid') }}<span class="unit">{{ getUnit('fluid') }}</span></div>
                             </div>
                         </div>
-                        <div class="cap-item" @click="cycleUnit" title="Change Unit">
+                        <div class="cap-item" @click="cycleUnit('gas')" title="Change Unit">
                             <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="var(--gas-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M17.5 19c0-1.7-1.3-3-3-3h-5c-1.7 0-3 1.3-3 3 .8 0 1.5-.7 1.5-1.5S7.2 16 6.5 16c-1.7 0-3 1.3-3 3s1.3 3 3 3h11c1.7 0 3-1.3 3-3z M19 13c-1.7 0-3 1.3-3 3h-2c0-2.8 2.2-5 5-5 .8 0 1.5-.7 1.5-1.5S19.7 8 19 8c-1.7 0-3 1.3-3 3 .8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5" fill="currentColor" fill-opacity="0.2"/>
                             </svg>
                             <div>
                                 <div class="cap-label">{{ t('gasCap') }}</div>
-                                <div class="cap-val val-gas">{{ getFormattedCap(volume * gasPerTank) }}<span class="unit">{{ getUnit() }}</span></div>
+                                <div class="cap-val val-gas">{{ getFormattedCap(volume * gasPerTank, 'gas') }}<span class="unit">{{ getUnit('gas') }}</span></div>
                             </div>
                         </div>
                     </div>
@@ -444,7 +448,7 @@
             const valveCoords = ref(new Set()); 
             const toastMessage = ref('');
             let toastTimer = null;
-            const currentTool = ref('valve');
+            const currentTool = ref(null); // 初期はnull (アニメーション待ち)
             
             const lang = ref('jp');
             const toggleLang = () => { lang.value = lang.value === 'jp' ? 'en' : 'jp'; };
@@ -462,10 +466,10 @@
                 layerLevel.value = 1; 
             };
 
-            // Unit logic
+            // Unit logic (Common)
             const unitState = ref(0);
             const cycleUnit = () => { unitState.value = (unitState.value + 1) % 3; };
-            const getUnit = () => ['mB', 'B', 'kB'][unitState.value];
+            const getUnit = (type) => ['mB', 'B', 'kB'][unitState.value];
             const getFormattedCap = (val) => {
                 const s = unitState.value;
                 let v = val;
@@ -567,6 +571,9 @@
             };
 
             const persistentError = computed(() => {
+                // 初期ロード時(バリデーション前)のチラつき防止のため、Setが空でないか確認する前に
+                // マウント済みフラグ等で制御するのが理想だが、今回は初期配置を必ず行うので
+                // 実際に0個ならエラーを出す
                 if(valveCoords.value.size === 0) return t('errNoValve');
                 return "";
             });
@@ -631,7 +638,7 @@
                 scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
                 const hlGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
-                const hlMat = new THREE.MeshBasicMaterial({ color: 0x5d9bc0, transparent: true, opacity: 0.3, depthTest: false });
+                const hlMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3, depthTest: false });
                 highlightMesh = new THREE.Mesh(hlGeo, hlMat);
                 highlightMesh.visible = false;
                 scene.add(highlightMesh);
@@ -682,7 +689,10 @@
                         hit.object.getMatrixAt(hit.instanceId, matrix);
                         highlightMesh.position.setFromMatrixPosition(matrix);
                         
-                        const tool = tools.find(t => t.id === currentTool.value);
+                        // use 'currentTool.value' or 'valve' as fallback if null during init
+                        const toolId = currentTool.value || 'valve';
+                        const tool = tools.find(t => t.id === toolId);
+                        
                         if (tool) {
                             if (tool.allowedOn.includes(type)) {
                                 highlightMesh.material.color.setHex(0x5d9bc0); 
@@ -723,7 +733,8 @@
                     const hit = intersects[0];
                     const { ix, iy, iz, type } = hit.object.userData.coords[hit.instanceId];
                     const coordKey = `${ix},${iy},${iz}`;
-                    const tool = tools.find(t => t.id === currentTool.value);
+                    const toolId = currentTool.value || 'valve';
+                    const tool = tools.find(t => t.id === toolId);
                     if (!tool) return;
 
                     if (event.button === 0) { 
@@ -765,6 +776,7 @@
                     for(let iy=0; iy<y; iy++) {
                         for(let iz=0; iz<z; iz++) {
                             
+                            // Layer Logic: Single layer active, others ghost
                             let isGhost = false;
                             if (isLayerMode.value) {
                                 const val = (axis==='x'?ix : axis==='y'?iy : iz);
@@ -795,6 +807,7 @@
                                     else { walls.push(mat); wallC.push({ ...coordObj, type: 'wall' }); }
                                 }
                             } else {
+                                // Air: Only if NOT ghost
                                 if (!isGhost && isLayerMode.value) {
                                     airs.push(mat); airC.push({ ...coordObj, type: 'air' });
                                 }
@@ -854,13 +867,16 @@
                 const browserLang = navigator.language || navigator.userLanguage;
                 if (!browserLang.startsWith('ja')) lang.value = 'en';
 
+                // 初期配置: 1,1,0 
                 valveCoords.value.add("1,1,0");
                 
                 initThree();
                 setTimeout(onResize, 100);
                 
-                currentTool.value = null; 
-                setTimeout(() => { selectTool('valve', true); }, 500);
+                // チラつき防止のため初期はnull
+                setTimeout(() => {
+                    selectTool('valve', true);
+                }, 500);
             });
             onBeforeUnmount(() => { window.removeEventListener('resize', onResize); });
 
