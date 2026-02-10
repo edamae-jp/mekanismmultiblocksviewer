@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mekanism Planner v15.0</title>
+    <title>Mekanism Planner v16.0</title>
     <style>
         /* --- デザイン変数 --- */
         :root {
@@ -245,7 +245,7 @@
 
 <div id="app" style="height: 100%; display: flex; flex-direction: column;">
     <header>
-        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v15.0</small></h1>
+        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v16.0</small></h1>
         
         <div class="lang-switch" :data-lang="lang" @click="toggleLang">
             <div class="lang-bg"></div>
@@ -734,7 +734,7 @@
                 
                 // Ghost Mat
                 const ghostMat = new THREE.MeshLambertMaterial({ 
-                    map: textures.tank, color: 0x888888, transparent: true, opacity: 0.15, depthWrite: false 
+                    map: textures.tank, color: 0x888888, transparent: true, opacity: 0.3, depthWrite: false 
                 });
 
                 const frames=[], walls=[], valves=[], airs=[], gFrames=[], gWalls=[], gValves=[];
@@ -744,12 +744,11 @@
                     for(let iy=0; iy<y; iy++) {
                         for(let iz=0; iz<z; iz++) {
                             
-                            // Ghost Logic: Show ALL blocks but make non-active ones ghost
+                            // Layer Logic: Single layer active, others ghost
                             let isGhost = false;
                             if (isLayerMode.value) {
                                 const val = (axis==='x'?ix : axis==='y'?iy : iz);
-                                // Show ghosts for anything > current slice
-                                if (val > currentSlice) {
+                                if (val !== currentSlice) {
                                     if (showGhost.value) isGhost = true;
                                     else continue;
                                 }
@@ -793,7 +792,7 @@
                     
                     if (isGhost) {
                         mat = ghostMat.clone();
-                        mat.map = tex; // Apply texture to ghost
+                        mat.map = tex; 
                     } else if (type === 'air') {
                         mat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.05, depthWrite: false }); 
                     } else {
@@ -811,6 +810,7 @@
                     list.forEach((m,i)=>mesh.setMatrixAt(i,m));
                     mesh.userData.coords = coords;
                     scene.add(mesh);
+                    
                     if (!isGhost) interactiveMeshes.push(mesh);
                 };
 
@@ -819,7 +819,6 @@
                 create(walls, useGlass.value ? textures.glass : textures.tank, wallC, 'wall');
                 create(airs, null, airC, 'air');
 
-                // Ghosts
                 create(gFrames, textures.tank, gFrameC, 'frame', true);
                 create(gValves, textures.valve, gValveC, 'valve', true);
                 create(gWalls, useGlass.value ? textures.glass : textures.tank, gWallC, 'wall', true);
@@ -838,13 +837,14 @@
                 const browserLang = navigator.language || navigator.userLanguage;
                 if (!browserLang.startsWith('ja')) lang.value = 'en';
 
-                // 初期配置: 1,1,0 = 前面・中央・一番下の「壁」 (フレームの上)
-                // 3x3x3なら フレームはy=0, 壁はy=1
+                // 初期配置: 正しい壁座標 (x=1, y=1, z=0) => 3x3x5なら前面壁の下
                 valveCoords.value.add("1,1,0");
                 
                 initThree();
                 setTimeout(onResize, 100);
                 selectTool('valve');
+                validateValves(); // 初期整合性チェック
+                updateMesh();
             });
             onBeforeUnmount(() => { window.removeEventListener('resize', onResize); });
 
