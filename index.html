@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mekanism Planner v7.2</title>
+    <title>Mekanism Planner v7.3</title>
     <style>
         /* --- デザイン規定 --- */
         :root {
@@ -11,7 +11,7 @@
             --dark-accent: #1C1361; --main-accent: #5d9bc0; --hover-color: #2A5669;
             --highlight-text: #5d9bc0; --text-color: #e0e0e0; --sub-text-color: #888;
             --border-color: #444; --error-color: #ff6b6b; --success-color: #56c596;
-            --active-tool-bg: rgba(93, 155, 192, 0.3);
+            --active-tool-bg: rgba(93, 155, 192, 0.2);
             --active-tool-border: #5d9bc0;
         }
         @media (prefers-color-scheme: light) {
@@ -35,23 +35,20 @@
         header { flex: 0 0 auto; text-align: center; margin-bottom: 10px; }
         h1 { margin: 0; font-size: 1.6rem; color: var(--highlight-text); }
 
-        /* --- レイアウト (Flexbox & Grid) --- */
         .container {
             display: flex; gap: 20px; height: 100%; overflow: hidden;
             max-width: 1600px; margin: 0 auto; width: 100%;
+            padding-bottom: 20px;
         }
 
-        /* 左パネル: 入力エリア */
+        /* 左パネル */
         .panel-left {
-            flex: 0 0 300px; /* 固定幅 */
-            display: flex; flex-direction: column; gap: 15px;
+            flex: 0 0 280px; display: flex; flex-direction: column; gap: 15px;
         }
 
-        /* 右パネル: プレビュー + 結果 */
+        /* 右パネル */
         .panel-right {
-            flex: 1; /* 残りを埋める */
-            display: flex; flex-direction: column; gap: 15px;
-            min-width: 0;
+            flex: 1; display: flex; flex-direction: column; gap: 15px; min-width: 0;
         }
 
         .card {
@@ -84,10 +81,9 @@
         button.toggle-btn:hover { background-color: var(--hover-color); transform: translateY(-1px); }
         button.toggle-btn.inactive { background-color: transparent; color: var(--text-color); border-color: var(--border-color); }
 
-        /* 3D View */
+        /* 3D View (サイズ固定・小さめ) */
         .view-wrapper {
-            flex: 1; /* 高さいっぱい */
-            min-height: 300px;
+            flex: 0 0 300px; /* 高さ固定 */
             position: relative; background-color: rgba(0,0,0,0.05);
             border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);
         }
@@ -97,43 +93,55 @@
         .palette {
             position: absolute; top: 10px; right: 10px;
             background: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 6px;
+            border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .tool-btn {
-            width: 40px; height: 40px; border: 2px solid transparent;
-            border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.05); transition: all 0.2s; position: relative;
+            height: 40px; border: 2px solid transparent; padding: 0 12px 0 6px;
+            border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.05); transition: all 0.2s;
+            color: var(--text-color); font-weight: bold; font-size: 0.9rem;
+            min-width: 40px;
         }
         .tool-btn:hover { background: rgba(255,255,255,0.1); }
-        .tool-btn.active { background: var(--active-tool-bg); border-color: var(--active-tool-border); }
         
-        /* ツールチップ */
-        .tool-tooltip {
-            position: absolute; right: 50px; top: 50%; transform: translateY(-50%);
-            background: rgba(0,0,0,0.8); color: #fff; padding: 4px 8px;
-            border-radius: 4px; font-size: 0.8rem; white-space: nowrap;
-            opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        .tool-btn.active {
+            background: var(--active-tool-bg); border-color: var(--active-tool-border); color: var(--highlight-text);
         }
-        .tool-btn:hover .tool-tooltip { opacity: 1; }
+        /* 選択時のアニメーション */
+        @keyframes popTool {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .tool-btn.animate { animation: popTool 0.3s ease-out; }
 
-        /* 結果エリア (2カラム) */
-        .result-layout {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
-            /* 高さが詰まってもスクロールしないように調整 */
-            overflow: hidden; 
+        /* 結果エリア (残り全部) */
+        .result-card {
+            flex: 1; display: flex; flex-direction: column; overflow: hidden; /* カード自体のスクロール禁止 */
         }
-        .result-column h3 {
-            font-size: 0.9rem; color: var(--sub-text-color); margin: 0 0 10px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;
-        }
-
-        .capacity-display {
-            text-align: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;
+        .result-header-area {
+            flex: 0 0 auto;
+            text-align: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;
         }
         .capacity-main { font-size: 1.8rem; font-weight: bold; color: var(--highlight-text); }
         .capacity-sub { font-size: 0.85rem; color: var(--sub-text-color); }
 
-        /* リストアイテム */
+        /* スクロール可能なリストエリア */
+        .result-scroll-area {
+            flex: 1; overflow-y: auto; /* 内部スクロール */
+            padding-right: 5px;
+        }
+        .result-scroll-area::-webkit-scrollbar { width: 6px; }
+        .result-scroll-area::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 3px; }
+
+        .result-layout {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+        }
+        .result-column h3 {
+            font-size: 0.9rem; color: var(--sub-text-color); margin: 10px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;
+        }
+
         .action-list { list-style: none; padding: 0; margin: 0; }
         .action-item {
             display: flex; justify-content: space-between; align-items: center;
@@ -166,12 +174,19 @@
         .cube-face.right { transform: rotateY(90deg) translateZ(7px); filter: brightness(0.8); }
 
         .item-name { display: flex; align-items: center; }
+        
+        /* 警告メッセージ (位置調整) */
+        .error-container {
+            position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 5px; pointer-events: none;
+        }
         .toast-msg {
-            position: absolute; top: 10px; left: 10px;
             background: rgba(255, 60, 60, 0.9); color: white; padding: 6px 12px; border-radius: 4px;
-            font-weight: bold; font-size: 0.85rem; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+            font-weight: bold; font-size: 0.85rem; opacity: 0; transition: opacity 0.3s;
         }
         .toast-msg.show { opacity: 1; }
+        .toast-msg.persistent {
+            background: rgba(255, 165, 0, 0.9); color: #fff; pointer-events: auto;
+        }
 
         .footer-signature { font-size: 0.8rem; color: #2A5669; font-weight: bold; margin-top: auto; text-align: right;}
     </style>
@@ -180,7 +195,7 @@
 
 <div id="app" style="height: 100%; display: flex; flex-direction: column;">
     <header>
-        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v7.2</small></h1>
+        <h1>Mekanism Planner <small style="font-size: 0.6em; opacity: 0.7;">v7.3</small></h1>
     </header>
 
     <div class="container">
@@ -210,7 +225,6 @@
                     <span>{{ useGlass ? 'ON' : 'OFF' }}</span>
                 </button>
             </div>
-            
             <div class="footer-signature">edamae</div>
         </div>
 
@@ -221,73 +235,79 @@
                 <div class="palette">
                     <div v-for="tool in tools" :key="tool.id" 
                          class="tool-btn" 
-                         :class="{ active: currentTool === tool.id }"
-                         @click="currentTool = tool.id">
+                         :class="{ active: currentTool === tool.id, animate: tool.animate }"
+                         @click="selectTool(tool.id)">
                         
                         <div v-if="tool.isBlock" class="cube-icon">
                             <div class="cube-face front" :style="{ backgroundImage: 'url(' + getIconPath(tool.iconName) + ')' }"></div>
                             <div class="cube-face top" :style="{ backgroundImage: 'url(' + getIconPath(tool.iconName) + ')' }"></div>
                             <div class="cube-face right" :style="{ backgroundImage: 'url(' + getIconPath(tool.iconName) + ')' }"></div>
                         </div>
-                        <div class="tool-tooltip">{{ tool.label }}</div>
+                        
+                        <span>{{ tool.label }}</span>
                     </div>
 
-                    <div class="tool-btn" @click="resetAll">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2">
+                    <div class="tool-btn" @click="resetAll" style="color: #ff6b6b;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M3 6h18 M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2 M10 11v6 M14 11v6" />
                         </svg>
-                        <div class="tool-tooltip">Reset All (リセット)</div>
+                        <span>Reset</span>
                     </div>
                 </div>
 
-                <div class="toast-msg" :class="{ show: toastMessage }">{{ toastMessage }}</div>
+                <div class="error-container">
+                    <div class="toast-msg" :class="{ show: toastMessage }">{{ toastMessage }}</div>
+                    <div class="toast-msg persistent" :class="{ show: persistentError }">⚠ {{ persistentError }}</div>
+                </div>
             </div>
 
-            <div class="card" style="flex: 0 0 auto;">
-                <div class="capacity-display">
+            <div class="card result-card">
+                <div class="result-header-area">
                     <div class="capacity-main">{{ formatNumber(volume * 16000) }} <span style="font-size:1rem">mB</span></div>
                     <div class="capacity-sub">Gas: {{ formatNumber(volume * 160000) }} mB</div>
                 </div>
 
-                <div class="result-layout">
-                    <div class="result-column">
-                        <h3>Blocks</h3>
-                        <ul class="action-list">
-                            <li v-for="(count, name) in blocks" :key="name" class="action-item">
-                                <div class="item-name">
-                                    <div class="icon-container">
-                                        <div v-if="isBlock(name)" class="cube-icon">
-                                            <div class="cube-face front" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
-                                            <div class="cube-face top" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
-                                            <div class="cube-face right" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
+                <div class="result-scroll-area">
+                    <div class="result-layout">
+                        <div class="result-column">
+                            <h3>Blocks</h3>
+                            <ul class="action-list">
+                                <li v-for="(count, name) in blocks" :key="name" class="action-item">
+                                    <div class="item-name">
+                                        <div class="icon-container">
+                                            <div v-if="isBlock(name)" class="cube-icon">
+                                                <div class="cube-face front" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
+                                                <div class="cube-face top" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
+                                                <div class="cube-face right" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
+                                            </div>
+                                            <img v-else :src="getIconPath(name)" class="item-icon-img" @error="onImgError">
                                         </div>
-                                        <img v-else :src="getIconPath(name)" class="item-icon-img" @error="onImgError">
+                                        <div>{{ translate(name) }}</div>
                                     </div>
-                                    <div>{{ translate(name) }}</div>
-                                </div>
-                                <div style="font-weight: bold;">{{ count }}</div>
-                            </li>
-                        </ul>
-                    </div>
+                                    <div style="font-weight: bold;">{{ count }}</div>
+                                </li>
+                            </ul>
+                        </div>
 
-                    <div class="result-column">
-                        <h3>Raw Materials</h3>
-                        <ul class="action-list">
-                            <li v-for="(count, name) in rawMaterials" :key="name" class="action-item">
-                                <div class="item-name">
-                                    <div class="icon-container">
-                                        <div v-if="isBlock(name)" class="cube-icon">
-                                            <div class="cube-face front" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
-                                            <div class="cube-face top" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
-                                            <div class="cube-face right" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
+                        <div class="result-column">
+                            <h3>Raw Materials</h3>
+                            <ul class="action-list">
+                                <li v-for="(count, name) in rawMaterials" :key="name" class="action-item">
+                                    <div class="item-name">
+                                        <div class="icon-container">
+                                            <div v-if="isBlock(name)" class="cube-icon">
+                                                <div class="cube-face front" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
+                                                <div class="cube-face top" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
+                                                <div class="cube-face right" :style="{ backgroundImage: 'url(' + getIconPath(name) + ')' }"></div>
+                                            </div>
+                                            <img v-else :src="getIconPath(name)" class="item-icon-img" @error="onImgError">
                                         </div>
-                                        <img v-else :src="getIconPath(name)" class="item-icon-img" @error="onImgError">
+                                        <div style="font-size: 0.9em;">{{ translate(name) }}</div>
                                     </div>
-                                    <div style="font-size: 0.9em;">{{ translate(name) }}</div>
-                                </div>
-                                <div style="font-weight: bold;">{{ count }}</div>
-                            </li>
-                        </ul>
+                                    <div style="font-weight: bold;">{{ count }}</div>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -300,24 +320,22 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-    const { createApp, ref, computed, watch, onMounted, onBeforeUnmount } = Vue;
+    const { createApp, ref, computed, watch, onMounted, onBeforeUnmount, reactive } = Vue;
 
     createApp({
         setup() {
             const dims = ref({ x: 3, y: 5, z: 3 });
             const useGlass = ref(true);
-            const valveCoords = ref(new Set()); // "ix,iy,iz"
+            const valveCoords = ref(new Set()); 
             const toastMessage = ref('');
             let toastTimer = null;
             
-            // 現在選択中のツール (現在はvalveのみ)
             const currentTool = ref('valve'); 
 
-            // 拡張用ツール定義
-            const tools = [
-                { id: 'valve', label: 'Place Valve', iconName: 'Dynamic Valve', isBlock: true, allowedOn: ['wall'] }
-                // 将来的に 'port', 'casing' などを追加可能
-            ];
+            // ツール定義 (Reactiveにしてアニメーション制御)
+            const tools = reactive([
+                { id: 'valve', label: 'Valve', iconName: 'Dynamic Valve', isBlock: true, allowedOn: ['wall'], animate: false }
+            ]);
 
             const translations = {
                 'Dynamic Tank': 'ダイナミックタンク', 'Structural Glass': '構造用ガラス', 'Dynamic Valve': 'ダイナミックバルブ',
@@ -348,6 +366,17 @@
                 toastTimer = setTimeout(() => { toastMessage.value = ''; }, 2000);
             };
 
+            // ツール選択とアニメーション
+            const selectTool = (id) => {
+                currentTool.value = id;
+                const tool = tools.find(t => t.id === id);
+                if(tool) {
+                    tool.animate = false;
+                    setTimeout(() => tool.animate = true, 10);
+                    setTimeout(() => tool.animate = false, 310);
+                }
+            };
+
             const handleWheel = (e, target) => {
                 const delta = e.deltaY < 0 ? 1 : -1;
                 let v = dims.value[target] + delta;
@@ -356,7 +385,7 @@
             };
 
             const resetAll = () => {
-                if(confirm("配置されたバルブをすべて削除しますか？\n(Reset all valves?)")) {
+                if(confirm("配置されたバルブをすべて削除しますか？")) {
                     valveCoords.value.clear();
                     updateMesh();
                 }
@@ -368,17 +397,15 @@
                 return (x - 2) * (y - 2) * (z - 2);
             });
 
-            // 基準点維持のためのバリデーション (0〜dim-1)
+            // 基準点維持のためのバリデーション
             const validateValves = () => {
                 const { x, y, z } = dims.value;
                 const toDelete = [];
                 valveCoords.value.forEach(coord => {
                     const [ix, iy, iz] = coord.split(',').map(Number);
-                    // 範囲外チェック
                     if (ix < 0 || ix >= x || iy < 0 || iy >= y || iz < 0 || iz >= z) {
                         toDelete.push(coord); return;
                     }
-                    // 表面チェック (フレーム判定)
                     const onX = (ix === 0 || ix === x - 1);
                     const onY = (iy === 0 || iy === y - 1);
                     const onZ = (iz === 0 || iz === z - 1);
@@ -387,6 +414,11 @@
                 });
                 toDelete.forEach(k => valveCoords.value.delete(k));
             };
+
+            const persistentError = computed(() => {
+                if(valveCoords.value.size === 0) return "バルブが設置されていません (No Valves)";
+                return "";
+            });
 
             const blocks = computed(() => {
                 const { x, y, z } = dims.value;
@@ -420,9 +452,7 @@
             let scene, camera, renderer, controls, meshGroup;
             let raycaster, mouse;
             let interactiveMeshes = [];
-            let isDragging = false;
-            let mouseDownPos = { x: 0, y: 0 };
-            let mouseDownTime = 0;
+            let highlightMesh = null; // ハイライト用メッシュ
 
             const initThree = () => {
                 const wrapper = document.querySelector('.view-wrapper');
@@ -444,13 +474,21 @@
                 scene.add(dl);
                 scene.add(new THREE.AmbientLight(0x404040));
 
+                // ハイライト用のボックスを作成（少し大きくする）
+                const hlGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+                const hlMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3, depthTest: false });
+                highlightMesh = new THREE.Mesh(hlGeo, hlMat);
+                highlightMesh.visible = false;
+                scene.add(highlightMesh);
+
                 raycaster = new THREE.Raycaster();
                 mouse = new THREE.Vector2();
 
                 window.addEventListener('resize', onResize);
-                renderer.domElement.addEventListener('pointerdown', onPointerDown);
+                renderer.domElement.addEventListener('pointerdown', (e)=>{/*Drag判定用*/}); 
                 renderer.domElement.addEventListener('pointerup', onPointerUp);
                 renderer.domElement.addEventListener('pointermove', onPointerMove);
+                renderer.domElement.addEventListener('pointerleave', () => { highlightMesh.visible = false; });
 
                 const tl = new THREE.TextureLoader();
                 const loadTex = (p, k) => tl.load(p, t => { t.magFilter = THREE.NearestFilter; textures[k] = t; updateMesh(); });
@@ -470,33 +508,62 @@
                 renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
             };
 
+            // ホバーハイライト処理
             const onPointerMove = (event) => {
                 const rect = renderer.domElement.getBoundingClientRect();
                 mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(interactiveMeshes);
 
-                let cursor = 'default';
                 if (intersects.length > 0) {
                     const hit = intersects[0];
-                    if(hit.object.userData.coords && hit.object.userData.coords[hit.instanceId]){
-                        const { type } = hit.object.userData.coords[hit.instanceId];
+                    const instanceId = hit.instanceId;
+                    
+                    // 位置合わせ
+                    const matrix = new THREE.Matrix4();
+                    hit.object.getMatrixAt(instanceId, matrix);
+                    highlightMesh.position.setFromMatrixPosition(matrix);
+                    
+                    if(hit.object.userData.coords && hit.object.userData.coords[instanceId]){
+                        const { type } = hit.object.userData.coords[instanceId];
                         const tool = tools.find(t => t.id === currentTool.value);
-                        // Wallなら設置可、Valveなら削除可
-                        if (tool && ( (type === 'wall' && tool.allowedOn.includes('wall')) || type === 'valve') ) {
-                            cursor = 'pointer';
+                        
+                        if (tool) {
+                            if (tool.allowedOn.includes(type)) {
+                                // 設置可能 -> 緑
+                                highlightMesh.material.color.setHex(0x00ff00);
+                                highlightMesh.visible = true;
+                                renderer.domElement.style.cursor = 'pointer';
+                            } else if (type === 'valve') {
+                                // 削除可能 (右クリック) -> 赤
+                                highlightMesh.material.color.setHex(0xff0000);
+                                highlightMesh.visible = true;
+                                renderer.domElement.style.cursor = 'pointer';
+                            } else {
+                                // 不可 -> 灰色
+                                highlightMesh.material.color.setHex(0xaaaaaa);
+                                highlightMesh.visible = false; // 不可なら表示しない方がすっきりする
+                                renderer.domElement.style.cursor = 'not-allowed';
+                            }
                         }
                     }
+                } else {
+                    highlightMesh.visible = false;
+                    renderer.domElement.style.cursor = 'default';
                 }
-                renderer.domElement.style.cursor = cursor;
             };
 
-            const onPointerDown = (event) => {
-                isDragging = false;
-                mouseDownPos = { x: event.clientX, y: event.clientY };
-                mouseDownTime = performance.now();
-            };
+            let mouseDownPos = { x: 0, y: 0 };
+            let mouseDownTime = 0;
+            // pointerdownはHTML側ではなくJSで管理
+            document.addEventListener('pointerdown', (e) => {
+                if(e.target === renderer.domElement) {
+                    mouseDownPos = { x: e.clientX, y: e.clientY };
+                    mouseDownTime = performance.now();
+                }
+            });
 
             const onPointerUp = (event) => {
                 if (event.button !== 0 && event.button !== 2) return;
@@ -553,15 +620,9 @@
                 for(let ix=0; ix<x; ix++) {
                     for(let iy=0; iy<y; iy++) {
                         for(let iz=0; iz<z; iz++) {
-                            // --- 座標計算 (重要: 左・下・手前基準) ---
-                            // X: 0が左 (通常) -> pos = ix - offset
-                            // Y: 0が下 (通常) -> pos = iy - offset
-                            // Z: 0が手前(+Z) -> pos = offset - iz  (逆転させることで手前を0にする)
-                            
                             const posX = ix - (x-1)/2;
                             const posY = iy - (y-1)/2;
-                            // Zは手前(0)が +Z側に来るように反転
-                            const posZ = (z-1)/2 - iz; 
+                            const posZ = (z-1)/2 - iz; // 左下手前基準
 
                             const isXEdge = (ix === 0 || ix === x - 1);
                             const isYEdge = (iy === 0 || iy === y - 1);
@@ -618,19 +679,19 @@
             watch(useGlass, updateMesh);
 
             onMounted(() => {
-                // 初期配置: 0,0,0 (左下の手前)
                 valveCoords.value.add("1,0,0"); // 手前中央下
-                valveCoords.value.add("1,0,2"); // 奥中央下 (size3の場合)
+                valveCoords.value.add("1,0,2"); // 奥中央下
                 initThree();
                 setTimeout(onResize, 100);
+                selectTool('valve'); // 初期アニメーション発火
             });
             onBeforeUnmount(() => { window.removeEventListener('resize', onResize); });
 
             return {
                 dims, useGlass, volume, blocks, rawMaterials,
                 formatNumber, translate, getIconPath, onImgError,
-                handleWheel, toastMessage, isBlock, 
-                currentTool, tools, resetAll
+                handleWheel, toastMessage, persistentError, isBlock, 
+                currentTool, tools, selectTool, resetAll
             };
         }
     }).mount('#app');
