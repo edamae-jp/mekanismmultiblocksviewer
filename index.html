@@ -175,20 +175,23 @@
             background: rgba(255,255,255,0.05); color: var(--text-color);
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); overflow: hidden;
         }
-        /* 選択中・ホバー時のスタイル */
         .tool-btn:hover, .tool-btn.active {
             background: var(--active-tool-bg); border-color: var(--active-tool-border);
             padding-right: 12px; justify-content: flex-start;
         }
-        
         .tool-icon-wrap { width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         
+        /* ツール名アニメーション (初期は不可視) */
         .tool-text {
             max-width: 0; opacity: 0; white-space: nowrap; font-weight: bold; font-size: 0.9rem;
             transition: all 0.3s ease; transform: translateX(10px);
         }
-        /* activeクラスで展開 (初期はCSSで隠してJSで制御) */
-        .tool-btn:hover .tool-text, .tool-btn.active .tool-text {
+        /* activeクラスで展開 */
+        .tool-btn.active .tool-text {
+            max-width: 150px; opacity: 1; margin-left: 4px; transform: translateX(0);
+        }
+        /* ホバーでも展開 */
+        .tool-btn:hover .tool-text {
             max-width: 150px; opacity: 1; margin-left: 4px; transform: translateX(0);
         }
 
@@ -470,7 +473,7 @@
             const unitState = ref(0);
             const cycleUnit = () => { unitState.value = (unitState.value + 1) % 3; };
             const getUnit = (type) => ['mB', 'B', 'kB'][unitState.value];
-            const getFormattedCap = (val) => {
+            const getFormattedCap = (val, type) => {
                 const s = unitState.value;
                 let v = val;
                 if(s===1) v /= 1000; else if(s===2) v /= 1000000;
@@ -490,6 +493,7 @@
                     errAir: 'ここには設置できません (空洞)',
                     confirmReset: '配置されたバルブをすべて削除しますか？',
                     toolValve: 'ダイナミックバルブ',
+                    // Items
                     'Dynamic Tank': 'ダイナミックタンク', 'Structural Glass': '構造用ガラス', 'Dynamic Valve': 'ダイナミックバルブ',
                     'Steel Ingot': '鋼鉄インゴット', 'Bucket': 'バケツ', 'Glass': 'ガラス', 'Basic Control Circuit': '基本制御回路'
                 },
@@ -505,6 +509,7 @@
                     errAir: 'Cannot place here (Air)',
                     confirmReset: 'Delete all valves?',
                     toolValve: 'Dynamic Valve',
+                    // Items
                     'Dynamic Tank': 'Dynamic Tank', 'Structural Glass': 'Structural Glass', 'Dynamic Valve': 'Dynamic Valve',
                     'Steel Ingot': 'Steel Ingot', 'Bucket': 'Bucket', 'Glass': 'Glass', 'Basic Control Circuit': 'Basic Control Circuit'
                 }
@@ -571,10 +576,9 @@
             };
 
             const persistentError = computed(() => {
-                // 初期ロード時(バリデーション前)のチラつき防止のため、Setが空でないか確認する前に
-                // マウント済みフラグ等で制御するのが理想だが、今回は初期配置を必ず行うので
-                // 実際に0個ならエラーを出す
-                if(valveCoords.value.size === 0) return t('errNoValve');
+                // 初期化完了前はエラーを出さない
+                if(!currentTool.value && valveCoords.value.size > 0) return "";
+                if(valveCoords.value.size === 0 && currentTool.value) return t('errNoValve');
                 return "";
             });
 
@@ -689,7 +693,7 @@
                         hit.object.getMatrixAt(hit.instanceId, matrix);
                         highlightMesh.position.setFromMatrixPosition(matrix);
                         
-                        // use 'currentTool.value' or 'valve' as fallback if null during init
+                        // フォールバック: 初期はvalveと仮定
                         const toolId = currentTool.value || 'valve';
                         const tool = tools.find(t => t.id === toolId);
                         
@@ -733,8 +737,7 @@
                     const hit = intersects[0];
                     const { ix, iy, iz, type } = hit.object.userData.coords[hit.instanceId];
                     const coordKey = `${ix},${iy},${iz}`;
-                    const toolId = currentTool.value || 'valve';
-                    const tool = tools.find(t => t.id === toolId);
+                    const tool = tools.find(t => t.id === (currentTool.value || 'valve'));
                     if (!tool) return;
 
                     if (event.button === 0) { 
@@ -776,7 +779,6 @@
                     for(let iy=0; iy<y; iy++) {
                         for(let iz=0; iz<z; iz++) {
                             
-                            // Layer Logic: Single layer active, others ghost
                             let isGhost = false;
                             if (isLayerMode.value) {
                                 const val = (axis==='x'?ix : axis==='y'?iy : iz);
@@ -807,7 +809,6 @@
                                     else { walls.push(mat); wallC.push({ ...coordObj, type: 'wall' }); }
                                 }
                             } else {
-                                // Air: Only if NOT ghost
                                 if (!isGhost && isLayerMode.value) {
                                     airs.push(mat); airC.push({ ...coordObj, type: 'air' });
                                 }
